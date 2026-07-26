@@ -1,12 +1,24 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const opinionsPath = path.join(__dirname, 'opinions.json');
 const submissionHistory = new Map();
 
+if (!process.env.DATABASE_URL) {
+  console.error('Missing DATABASE_URL environment variable');
+  process.exit(1);
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000
+});
+
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '20kb' }));
 app.use(express.static(__dirname));
 
@@ -44,14 +56,56 @@ function canSubmit(ip) {
   return true;
 }
 
-// ZAPISYWANIE OPINII
-app.post('/add-opinion', (req, res) => {
-  if (!canSubmit(req.ip)) {
-    return res.status(429).json({
-      error: '已超過每小時可提交的評價數量，請稍後再試。'
+// POBIERANIE ZATWIERDZONYCH OPINII
+app.get('/api/opinions', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        line,
+        ship,
+        TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
+        author,
+        title,
+        review_text AS text,
+        rating_decor,
+        rating_room,
+        rating_service,
+        rating_food,
+        created_at
+      FROM opinions
+      WHERE status = 'approved'
+      ORDER BY created_at DESC, id DESC
+    `);
+
+    const opinions = result.rows.map(row => ({
+      id: row.id,
+      line: row.line,
+      ship: row.ship,
+      date: row.date,
+      author: row.author,
+      title: row.title,
+      text: row.text,
+      ratings: {
+        decor: row.rating_decor,
+        room: row.rating_room,
+        service: row.rating_service,
+        food: row.rating_food
+      },
+      createdAt: row.created_at
+    }));
+
+    return res.json(opinions);
+  } catch (error) {
+    console.error('Unable to load opinions:', error);
+    return res.status(500).json({
+      error: '暫時無法載入評價，請稍後再試。'
     });
   }
+});
 
+// ZAPISYWANIE OPINII
+app.post('/add-opinion', async (req, res) => {
   const ratings = req.body.ratings || {};
   const newOpinion = {
     title: cleanText(req.body.title, 100),
@@ -84,19 +138,48 @@ app.post('/add-opinion', (req, res) => {
     });
   }
 
+  if (!canSubmit(req.ip)) {
+    return res.status(429).json({
+      error: '已超過每小時可提交的評價數量，請稍後再試。'
+    });
+  }
+
   try {
-    const data = JSON.parse(
-      fs.readFileSync(opinionsPath, 'utf8')
+    const result = await pool.query(
+      `
+        INSERT INTO opinions (
+          line,
+          ship,
+          cruise_date,
+          author,
+          title,
+          review_text,
+          rating_decor,
+          rating_room,
+          rating_service,
+          rating_food
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id
+      `,
+      [
+        newOpinion.line,
+        newOpinion.ship,
+        newOpinion.date,
+        newOpinion.author,
+        newOpinion.title,
+        newOpinion.text,
+        newOpinion.ratings.decor,
+        newOpinion.ratings.room,
+        newOpinion.ratings.service,
+        newOpinion.ratings.food
+      ]
     );
 
-    data.push(newOpinion);
-
-    fs.writeFileSync(
-      opinionsPath,
-      JSON.stringify(data, null, 2)
-    );
-
-    return res.status(201).json({ status: 'ok' });
+    return res.status(201).json({
+      status: 'ok',
+      id: result.rows[0].id
+    });
   } catch (error) {
     console.error('Unable to save opinion:', error);
     return res.status(500).json({
@@ -106,6 +189,18 @@ app.post('/add-opinion', (req, res) => {
 });
 
 // URUCHOMIENIE SERWERA
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
+async function startServer() {
+  try {
+    await pool.query('SELECT 1');
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log('Connected to PostgreSQL');
+    });
+  } catch (error) {
+    console.error('Unable to connect to PostgreSQL:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

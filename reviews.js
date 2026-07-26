@@ -48,7 +48,7 @@ async function loadReviews(filter) {
   const container = document.getElementById('reviews');
 
   try {
-    const response = await fetch('/opinions.json');
+    const response = await fetch('/api/opinions');
 
     if (!response.ok) {
       throw new Error('無法載入評價');
