@@ -82,6 +82,10 @@ na:
 
 Następnie wpisz wybrane statki w ostatnim parametrze. Wszystkie wcześniejsze
 opinie zostaną automatycznie przypisane do osobnej strony firmy.
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> a07de8dfb51877b5c7a59293b84ce1a729716829
 
 DODAWANIE FILMU YOUTUBE DO STATKU
 
@@ -97,6 +101,11 @@ ID filmu to fragment adresu znajdujący się po „youtu.be/”, po „v=” alb
 Jeżeli statek ma przypisany film, na jego stronie automatycznie pojawi się
 przycisk „觀看完整影片” oraz odtwarzacz na dole. Jeśli filmu nie ma, przycisk
 i sekcja pozostają całkowicie ukryte.
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 63cffdaebbdea878e1e30f80b0a5b6d181c68aa3
+>>>>>>> a07de8dfb51877b5c7a59293b84ce1a729716829
 
 NAJWAŻNIEJSZE PLIKI
 
