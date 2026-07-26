@@ -219,12 +219,15 @@
     ])
   ];
 
+<<<<<<< HEAD
   // Aby dodać film do kolejnego statku, wklej tutaj:
   // 'slug-statku': 'ID_FILMU_Z_YOUTUBE',
   const youtubeVideoIds = {
     'msc-bellissima': 'CNnpxih-GRY'
   };
 
+=======
+>>>>>>> 63cffdaebbdea878e1e30f80b0a5b6d181c68aa3
   companies.forEach(item => {
     item.ships.forEach(ship => {
       ship.companyId = item.id;
@@ -232,7 +235,10 @@
       ship.line = item.formValue;
       ship.image = ship.image || defaultImage;
       ship.featured = item.featuredShipNames.includes(ship.name);
+<<<<<<< HEAD
       ship.youtubeVideoId = youtubeVideoIds[ship.slug] || '';
+=======
+>>>>>>> 63cffdaebbdea878e1e30f80b0a5b6d181c68aa3
     });
   });
 
