@@ -10,6 +10,12 @@ const filterButtons = document.querySelectorAll('[data-filter]');
 let opinions = [];
 let currentFilter = 'pending';
 
+const statusLabels = {
+  pending: '待審核',
+  approved: '已通過',
+  rejected: '已拒絕'
+};
+
 function textElement(tagName, className, text) {
   const element = document.createElement(tagName);
   element.className = className;
@@ -40,7 +46,7 @@ async function apiRequest(url, options = {}) {
   }
 
   if (!response.ok) {
-    const error = new Error(data.error || 'Wystąpił błąd.');
+    const error = new Error(data.error || '發生錯誤，請稍後再試。');
     error.status = response.status;
     throw error;
   }
@@ -66,7 +72,7 @@ function renderOpinions() {
 
   if (visibleOpinions.length === 0) {
     opinionsList.appendChild(
-      textElement('p', 'empty-state', 'Brak opinii w tej kategorii.')
+      textElement('p', 'empty-state', '此分類目前沒有評價。')
     );
     return;
   }
@@ -78,21 +84,27 @@ function renderOpinions() {
     const heading = document.createElement('div');
     heading.className = 'opinion-heading';
     heading.appendChild(textElement('h2', '', opinion.title));
-    heading.appendChild(textElement('span', `status status-${opinion.status}`, opinion.status));
+    heading.appendChild(
+      textElement(
+        'span',
+        `status status-${opinion.status}`,
+        statusLabels[opinion.status] || opinion.status
+      )
+    );
     card.appendChild(heading);
 
     card.appendChild(
       textElement('p', 'opinion-meta', `${opinion.line} · ${opinion.ship} · ${opinion.date}`)
     );
-    card.appendChild(textElement('p', 'opinion-author', `Autor: ${opinion.author}`));
+    card.appendChild(textElement('p', 'opinion-author', `姓名：${opinion.author}`));
     card.appendChild(textElement('p', 'opinion-text', opinion.text));
 
     const ratings = document.createElement('div');
     ratings.className = 'ratings';
-    ratings.appendChild(textElement('span', '', ratingText('Wystrój', opinion.rating_decor)));
-    ratings.appendChild(textElement('span', '', ratingText('Pokój', opinion.rating_room)));
-    ratings.appendChild(textElement('span', '', ratingText('Obsługa', opinion.rating_service)));
-    ratings.appendChild(textElement('span', '', ratingText('Jedzenie', opinion.rating_food)));
+    ratings.appendChild(textElement('span', '', ratingText('裝潢', opinion.rating_decor)));
+    ratings.appendChild(textElement('span', '', ratingText('房間', opinion.rating_room)));
+    ratings.appendChild(textElement('span', '', ratingText('服務', opinion.rating_service)));
+    ratings.appendChild(textElement('span', '', ratingText('餐飲', opinion.rating_food)));
     card.appendChild(ratings);
 
     const actions = document.createElement('div');
@@ -100,18 +112,18 @@ function renderOpinions() {
 
     if (opinion.status !== 'approved') {
       actions.appendChild(
-        createActionButton('Zatwierdź', 'approve-button', () => updateOpinion(opinion.id, 'approved'))
+        createActionButton('通過', 'approve-button', () => updateOpinion(opinion.id, 'approved'))
       );
     }
 
     if (opinion.status !== 'rejected') {
       actions.appendChild(
-        createActionButton('Odrzuć', 'reject-button', () => updateOpinion(opinion.id, 'rejected'))
+        createActionButton('拒絕', 'reject-button', () => updateOpinion(opinion.id, 'rejected'))
       );
     }
 
     actions.appendChild(
-      createActionButton('Usuń', 'delete-button', () => deleteOpinion(opinion.id, opinion.title))
+      createActionButton('刪除', 'delete-button', () => deleteOpinion(opinion.id, opinion.title))
     );
 
     card.appendChild(actions);
@@ -138,7 +150,7 @@ async function loadOpinions() {
 }
 
 async function updateOpinion(id, status) {
-  moderationMessage.textContent = 'Zapisywanie…';
+    moderationMessage.textContent = '儲存中…';
 
   try {
     await apiRequest(`/api/admin/opinions/${id}`, {
@@ -152,11 +164,11 @@ async function updateOpinion(id, status) {
 }
 
 async function deleteOpinion(id, title) {
-  if (!window.confirm(`Usunąć opinię „${title}”? Tej operacji nie można cofnąć.`)) {
+  if (!window.confirm(`確定要刪除「${title}」這則評價嗎？刪除後無法復原。`)) {
     return;
   }
 
-  moderationMessage.textContent = 'Usuwanie…';
+  moderationMessage.textContent = '刪除中…';
 
   try {
     await apiRequest(`/api/admin/opinions/${id}`, {
@@ -170,7 +182,7 @@ async function deleteOpinion(id, title) {
 
 loginForm.addEventListener('submit', async event => {
   event.preventDefault();
-  loginMessage.textContent = 'Logowanie…';
+  loginMessage.textContent = '登入中…';
 
   try {
     await apiRequest('/api/admin/login', {

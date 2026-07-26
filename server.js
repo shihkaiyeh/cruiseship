@@ -141,7 +141,7 @@ function requireAdmin(req, res, next) {
   const token = getCookie(req, 'admin_session');
 
   if (!verifyAdminToken(token)) {
-    return res.status(401).json({ error: 'Brak autoryzacji.' });
+    return res.status(401).json({ error: '請先登入管理員帳號。' });
   }
 
   return next();
@@ -151,7 +151,7 @@ function requireAdmin(req, res, next) {
 app.post('/api/admin/login', (req, res) => {
   if (!canAttemptLogin(req.ip)) {
     return res.status(429).json({
-      error: 'Zbyt wiele prób logowania. Spróbuj ponownie za 15 minut.'
+      error: '登入嘗試次數過多，請於 15 分鐘後再試。'
     });
   }
 
@@ -160,7 +160,7 @@ app.post('/api/admin/login', (req, res) => {
     : '';
 
   if (!ADMIN_PASSWORD || !ADMIN_SECRET || !safeEqual(password, ADMIN_PASSWORD)) {
-    return res.status(401).json({ error: 'Nieprawidłowe hasło.' });
+    return res.status(401).json({ error: '管理員密碼不正確。' });
   }
 
   const token = createAdminToken();
@@ -213,7 +213,7 @@ app.get('/api/admin/opinions', requireAdmin, async (req, res) => {
     return res.json(result.rows);
   } catch (error) {
     console.error('Unable to load admin opinions:', error);
-    return res.status(500).json({ error: 'Nie udało się pobrać opinii.' });
+    return res.status(500).json({ error: '暫時無法取得評價，請稍後再試。' });
   }
 });
 
@@ -223,7 +223,7 @@ app.patch('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
   const status = req.body.status;
 
   if (!Number.isInteger(id) || id <= 0 || !allowedStatuses.includes(status)) {
-    return res.status(400).json({ error: 'Nieprawidłowe dane.' });
+    return res.status(400).json({ error: '提交的資料不正確。' });
   }
 
   try {
@@ -238,13 +238,13 @@ app.patch('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Nie znaleziono opinii.' });
+      return res.status(404).json({ error: '找不到這則評價。' });
     }
 
     return res.json(result.rows[0]);
   } catch (error) {
     console.error('Unable to update opinion:', error);
-    return res.status(500).json({ error: 'Nie udało się zmienić opinii.' });
+    return res.status(500).json({ error: '暫時無法更新評價，請稍後再試。' });
   }
 });
 
@@ -252,7 +252,7 @@ app.delete('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'Nieprawidłowy identyfikator.' });
+    return res.status(400).json({ error: '評價識別碼不正確。' });
   }
 
   try {
@@ -262,13 +262,13 @@ app.delete('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Nie znaleziono opinii.' });
+      return res.status(404).json({ error: '找不到這則評價。' });
     }
 
     return res.json({ status: 'ok', id });
   } catch (error) {
     console.error('Unable to delete opinion:', error);
-    return res.status(500).json({ error: 'Nie udało się usunąć opinii.' });
+    return res.status(500).json({ error: '暫時無法刪除評價，請稍後再試。' });
   }
 });
 

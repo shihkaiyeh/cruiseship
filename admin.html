@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Moderacja opinii</title>
+  <title>評價審核</title>
   <link rel="stylesheet" href="./admin.css">
 </head>
 <body>
   <main class="admin-shell">
     <section id="loginView" class="admin-panel">
-      <h1>Panel administratora</h1>
-      <p>Zaloguj się, aby moderować opinie.</p>
+      <h1>管理員後台</h1>
+      <p>請登入以審核使用者提交的評價。</p>
 
       <form id="loginForm">
-        <label for="password">Hasło</label>
+        <label for="password">管理員密碼</label>
         <input type="password" id="password" autocomplete="current-password" required>
-        <button type="submit">Zaloguj się</button>
+        <button type="submit">登入</button>
       </form>
 
       <p id="loginMessage" class="message" role="alert"></p>
@@ -24,17 +24,17 @@
     <section id="moderationView" class="admin-panel" hidden>
       <header class="admin-header">
         <div>
-          <h1>Moderacja opinii</h1>
-          <p>Nowe wpisy oczekują na Twoją decyzję.</p>
+          <h1>評價審核</h1>
+          <p>新提交的評價正在等待你的審核。</p>
         </div>
-        <button type="button" id="logoutButton" class="secondary-button">Wyloguj</button>
+        <button type="button" id="logoutButton" class="secondary-button">登出</button>
       </header>
 
-      <nav class="filters" aria-label="Filtry opinii">
-        <button type="button" data-filter="pending" class="active">Oczekujące</button>
-        <button type="button" data-filter="approved">Zatwierdzone</button>
-        <button type="button" data-filter="rejected">Odrzucone</button>
-        <button type="button" data-filter="all">Wszystkie</button>
+      <nav class="filters" aria-label="評價篩選">
+        <button type="button" data-filter="pending" class="active">待審核</button>
+        <button type="button" data-filter="approved">已通過</button>
+        <button type="button" data-filter="rejected">已拒絕</button>
+        <button type="button" data-filter="all">全部</button>
       </nav>
 
       <p id="moderationMessage" class="message" role="status"></p>

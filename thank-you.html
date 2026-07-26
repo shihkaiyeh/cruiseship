@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>評價已送出</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./thank-you.css">
+</head>
+<body>
+  <div id="menu"></div>
+
+  <main class="content thank-you-content">
+    <section class="thank-you-card">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <h1>謝謝你的分享！</h1>
+      <p class="thank-you-lead">你的評價已成功送出。</p>
+      <p>
+        為了確保內容品質並避免垃圾訊息，評價將由管理員審核。
+        審核通過後，就會顯示在對應的郵輪頁面。
+      </p>
+      <p class="thank-you-note">你不需要再次送出評價。</p>
+
+      <div class="thank-you-actions">
+        <a href="/" class="thank-you-button secondary">回到首頁</a>
+        <a href="msc.html" id="reviewsLink" class="thank-you-button primary">查看郵輪評價</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    fetch('./menu.html')
+      .then(response => response.text())
+      .then(html => {
+        document.getElementById('menu').innerHTML = html;
+
+        document.querySelectorAll('.menu-button').forEach(button => {
+          button.addEventListener('click', () => {
+            const submenu = button.nextElementSibling;
+            submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
+          });
+        });
+      });
+
+    const params = new URLSearchParams(window.location.search);
+    const line = params.get('line');
+    const ship = params.get('ship');
+    const reviewsLink = document.getElementById('reviewsLink');
+
+    if (ship === 'MSC Bellissima') {
+      reviewsLink.href = 'msc-bellissima.html';
+      reviewsLink.textContent = '查看 MSC Bellissima 評價';
+    } else if (line === 'MSC') {
+      reviewsLink.href = 'msc.html';
+      reviewsLink.textContent = '查看 MSC 評價';
+    }
+  </script>
+</body>
+</html>

@@ -150,21 +150,12 @@
           throw new Error(data.error || "無法保存評價");
         }
 
-        const saved = document.getElementById("saved");
-        saved.textContent = "謝謝！評價已送出，等待審核";
-        saved.classList.add("show");
+        const params = new URLSearchParams({
+          line: newOpinion.line,
+          ship: newOpinion.ship
+        });
 
-        setTimeout(() => {
-          saved.classList.remove("show");
-
-          if (newOpinion.ship === "MSC Bellissima") {
-            window.location.href = "msc-bellissima.html";
-          } else if (newOpinion.line === "MSC") {
-            window.location.href = "msc.html";
-          } else {
-            window.location.href = "/";
-          }
-        }, 1800);
+        window.location.href = `thank-you.html?${params.toString()}`;
       } catch (error) {
         formMessage.textContent = error.message;
         submitButton.disabled = false;
@@ -205,8 +196,6 @@ document.getElementById("line").addEventListener("change", function() {
   }
 });
 </script>
-
-<div id="saved" class="saved">謝謝！</div>
 
 </body>
 </html>
