@@ -31,13 +31,13 @@
                 <option value="MSC">MSC</option>
                 <option value="Costa">Costa</option>
                 <option value="Disney">Disney</option>
-                <option value="河輪">Disney</option>
+                <option value="河輪">河輪</option>
             </select>
 
         <!-- DYNAMIC MENU -->
         <div id="ship-container" style="display:none;">
             <label>船</label>
-                 <select id="ship" required></select>
+                 <select id="ship" required disabled></select>
         </div>
 
         <label>搭船日期</label>
@@ -84,7 +84,8 @@
         <label>名字</label>
         <input type="text" id="author" required>
 
-        <button type="submit" class="add-button">保存</button>
+        <button type="submit" class="add-button" id="submitButton">保存</button>
+        <p id="formMessage" role="status" aria-live="polite"></p>
 
       </form>
     </div>
@@ -110,12 +111,16 @@
 
   <!-- DYNAMIC REVIEW -->
   <script>
-    document.getElementById("reviewForm").addEventListener("submit", function(e) {
+    document.getElementById("reviewForm").addEventListener("submit", async function(e) {
       e.preventDefault();
 
+      const form = e.currentTarget;
+      const submitButton = document.getElementById("submitButton");
+      const formMessage = document.getElementById("formMessage");
+
       const newOpinion = {
-        title: document.getElementById("title").value,
-        text: document.getElementById("text").value,
+        title: document.getElementById("title").value.trim(),
+        text: document.getElementById("text").value.trim(),
         line: document.getElementById("line").value,
         ship: document.getElementById("ship").value,
         date: document.getElementById("date").value,
@@ -125,28 +130,46 @@
           service: Number(document.getElementById("service").value),
           food: Number(document.getElementById("food").value)
         },
-        author: document.getElementById("author").value
+        author: document.getElementById("author").value.trim()
       };
 
-        fetch('/add-opinion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newOpinion)
-        })
-        .then(res => res.json())
-        .then(data => {
+      submitButton.disabled = true;
+      submitButton.textContent = "保存中…";
+      formMessage.textContent = "";
+
+      try {
+        const response = await fetch('/add-opinion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newOpinion)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "無法保存評價");
+        }
+
         const saved = document.getElementById("saved");
-        saved.textContent = "Saved!";
+        saved.textContent = "謝謝！評價已保存";
         saved.classList.add("show");
 
         setTimeout(() => {
-            saved.classList.remove("show");
-            window.location.href = "msc.html";
-        }, 1800);
-        });
+          saved.classList.remove("show");
 
-      alert("Your review has been saved!");
-      window.location.href = "msc.html";
+          if (newOpinion.ship === "MSC Bellissima") {
+            window.location.href = "msc-bellissima.html";
+          } else if (newOpinion.line === "MSC") {
+            window.location.href = "msc.html";
+          } else {
+            window.location.href = "/";
+          }
+        }, 1800);
+      } catch (error) {
+        formMessage.textContent = error.message;
+        submitButton.disabled = false;
+        submitButton.textContent = "保存";
+      }
     });
   </script>
 
@@ -155,7 +178,7 @@ const ships = {
   "MSC": ["MSC Bellissima", "MSC Virtuosa", "MSC Seaside", "MSC World Europa"],
   "Costa": ["Costa Toscana", "Costa Smeralda", "Costa Deliziosa"],
   "Disney": ["Disney Dream", "Disney Fantasy", "Disney Wish"],
-  "河輪": ["Disney Dream", "Disney Fantasy", "Disney Wish"],
+  "河輪": [],
 };
 
 document.getElementById("line").addEventListener("change", function() {
@@ -163,8 +186,9 @@ document.getElementById("line").addEventListener("change", function() {
   const shipContainer = document.getElementById("ship-container");
   const shipSelect = document.getElementById("ship");
 
-  if (ships[selectedLine]) {
+  if (ships[selectedLine] && ships[selectedLine].length > 0) {
     shipContainer.style.display = "block";
+    shipSelect.disabled = false;
     shipSelect.innerHTML = "";
 
     ships[selectedLine].forEach(ship => {
@@ -176,6 +200,7 @@ document.getElementById("line").addEventListener("change", function() {
 
   } else {
     shipContainer.style.display = "none";
+    shipSelect.disabled = true;
     shipSelect.innerHTML = "";
   }
 });
