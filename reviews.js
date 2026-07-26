@@ -37,9 +37,9 @@ function createReviewCard(opinion) {
   ratings.appendChild(createRating('食物', opinion.ratings?.food));
   review.appendChild(ratings);
 
-  review.appendChild(createTextElement('div', 'review-section-title', '評價:'));
+  review.appendChild(createTextElement('div', 'review-section-title', '旅客心得'));
   review.appendChild(createTextElement('p', 'review-text', opinion.text || ''));
-  review.appendChild(createTextElement('div', 'review-author', `名字: ${opinion.author || ''}`));
+  review.appendChild(createTextElement('div', 'review-author', `分享者：${opinion.author || ''}`));
 
   return review;
 }

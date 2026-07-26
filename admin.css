@@ -1,8 +1,22 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&display=swap");
+
 :root {
+  --navy-950: #081b2b;
+  --navy-900: #0d263a;
+  --navy-800: #173b55;
+  --ocean: #1e789b;
+  --gold: #c7a35b;
+  --ivory: #f7f4ed;
+  --paper: #fff;
+  --ink: #172632;
+  --muted: #667783;
+  --line: #dfe5e7;
+  --success: #26745f;
+  --danger: #a43c3c;
   color-scheme: light;
-  font-family: Arial, sans-serif;
-  background: #f3f5f8;
-  color: #1f2937;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: var(--ivory);
+  color: var(--ink);
 }
 
 * {
@@ -10,7 +24,11 @@
 }
 
 body {
+  min-height: 100vh;
   margin: 0;
+  background:
+    radial-gradient(circle at 90% 0, rgba(199, 163, 91, 0.13), transparent 32rem),
+    var(--ivory);
 }
 
 button,
@@ -22,16 +40,62 @@ button {
   cursor: pointer;
 }
 
+h1,
+h2 {
+  font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  letter-spacing: 0.03em;
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px clamp(18px, 4vw, 54px);
+  background: var(--navy-950);
+  color: #fff;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.admin-brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(229, 207, 154, 0.65);
+  border-radius: 50%;
+  color: #e5cf9a;
+  font-family: Georgia, serif;
+}
+
+.admin-brand strong {
+  font-family: "Noto Serif TC", "PMingLiU", serif;
+  letter-spacing: 0.08em;
+}
+
+.admin-topbar span:last-child {
+  color: #9eb0bd;
+  font-size: 13px;
+}
+
 .admin-shell {
-  width: min(1100px, calc(100% - 32px));
-  margin: 40px auto;
+  width: min(1160px, calc(100% - 36px));
+  margin: clamp(30px, 5vw, 64px) auto;
 }
 
 .admin-panel {
-  background: #fff;
-  padding: 32px;
-  border-radius: 16px;
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
+  overflow: hidden;
+  padding: clamp(28px, 5vw, 52px);
+  border: 1px solid var(--line);
+  border-radius: 4px 22px 22px 4px;
+  background: var(--paper);
+  box-shadow: 0 18px 50px rgba(8, 27, 43, 0.11);
 }
 
 .admin-panel[hidden] {
@@ -39,35 +103,56 @@ button {
 }
 
 .admin-panel h1 {
-  margin-top: 0;
+  margin: 0 0 12px;
+  color: var(--navy-950);
+  font-size: clamp(34px, 5vw, 50px);
+}
+
+.admin-panel > p,
+.admin-header p {
+  color: var(--muted);
 }
 
 #loginForm {
   display: grid;
-  gap: 12px;
-  max-width: 420px;
+  max-width: 430px;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+#loginForm label {
+  color: var(--navy-800);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 #loginForm input {
-  padding: 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5da;
+  border-radius: 6px;
+  outline: none;
+}
+
+#loginForm input:focus {
+  border-color: var(--ocean);
+  box-shadow: 0 0 0 3px rgba(30, 120, 155, 0.11);
 }
 
 #loginForm button,
 .filters button,
 .actions button,
 .secondary-button {
-  border: 0;
-  border-radius: 8px;
-  padding: 10px 16px;
+  min-height: 44px;
+  padding: 10px 17px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   font-weight: 700;
 }
 
-#loginForm button,
-.approve-button {
-  background: #087f5b;
-  color: #fff;
+#loginForm button {
+  margin-top: 9px;
+  background: var(--gold);
+  color: var(--navy-950);
 }
 
 .admin-header {
@@ -75,36 +160,56 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-header p {
+  margin: 0;
 }
 
 .secondary-button,
 .filters button {
-  background: #e2e8f0;
-  color: #1f2937;
+  border-color: var(--line);
+  background: #f3f5f5;
+  color: var(--navy-800);
 }
 
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 24px 0;
+  gap: 9px;
+  margin: 26px 0;
 }
 
 .filters button.active {
-  background: #2563eb;
+  border-color: var(--navy-900);
+  background: var(--navy-900);
   color: #fff;
 }
 
 .message {
   min-height: 24px;
-  color: #b42318;
+  color: var(--danger);
 }
 
 .opinion-card {
-  padding: 24px;
-  border: 1px solid #dbe1e8;
-  border-radius: 12px;
-  margin-top: 16px;
+  position: relative;
+  margin-top: 17px;
+  overflow: hidden;
+  padding: clamp(22px, 4vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: 3px 15px 15px 3px;
+  background: #fff;
+  box-shadow: 0 7px 22px rgba(8, 27, 43, 0.06);
+}
+
+.opinion-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--gold);
+  content: "";
 }
 
 .opinion-heading {
@@ -116,38 +221,42 @@ button {
 
 .opinion-heading h2 {
   margin: 0;
+  color: var(--navy-950);
+  font-size: 25px;
 }
 
 .status {
   padding: 5px 10px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .status-pending {
-  background: #fff3bf;
-  color: #8a5900;
+  background: #fff2cf;
+  color: #845d12;
 }
 
 .status-approved {
-  background: #d3f9d8;
-  color: #087f5b;
+  background: #dff1ea;
+  color: var(--success);
 }
 
 .status-rejected {
-  background: #ffe3e3;
-  color: #c92a2a;
+  background: #f8e2e2;
+  color: var(--danger);
 }
 
 .opinion-meta,
 .opinion-author {
-  color: #64748b;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .opinion-text {
+  padding: 16px 0;
   white-space: pre-wrap;
-  line-height: 1.6;
+  line-height: 1.8;
 }
 
 .ratings {
@@ -155,38 +264,48 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 20px;
   margin: 18px 0;
+  color: var(--navy-800);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.approve-button {
+  background: var(--success);
+  color: #fff;
 }
 
 .reject-button {
-  background: #ffe8cc;
-  color: #9c4d00;
+  background: #fff0d9;
+  color: #8e5319;
 }
 
 .delete-button {
-  background: #c92a2a;
+  background: var(--danger);
   color: #fff;
 }
 
 .empty-state {
-  padding: 32px;
+  padding: 54px 24px;
+  border: 1px dashed #cad5da;
+  border-radius: 12px;
+  color: var(--muted);
   text-align: center;
-  color: #64748b;
 }
 
 @media (max-width: 640px) {
-  .admin-shell {
-    width: min(100% - 20px, 1100px);
-    margin: 10px auto;
+  .admin-topbar span:last-child {
+    display: none;
   }
 
-  .admin-panel {
-    padding: 20px;
+  .admin-shell {
+    width: min(100% - 20px, 1160px);
+    margin: 10px auto;
   }
 
   .admin-header,

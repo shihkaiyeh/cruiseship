@@ -1,53 +1,47 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
-  <title>郵輪</title>
-
-  <!-- STYLE -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="真實的郵輪與河輪旅遊評價，幫助你找到最適合自己的下一趟航程。">
+  <title>郵輪評價誌｜真實旅程，真實評價</title>
   <link rel="stylesheet" href="./style.css">
 </head>
-
 <body>
-
-  <!-- MENU -->
   <div id="menu"></div>
 
-  <div class="content">
-    <div class="center-wrapper">
+  <main class="content">
+    <div class="page-shell">
+      <section class="home-hero">
+        <img src="./images/hero.jpg" alt="郵輪航行於海上的風景">
+        <div class="hero-copy">
+          <p class="eyebrow">Independent cruise reviews</p>
+          <h1>找到屬於你的<br>完美航程</h1>
+          <p>
+            從真實旅客的住宿、餐飲、服務與設施評價中，
+            認識每一艘郵輪，安心選擇下一趟旅程。
+          </p>
+          <div class="button-row">
+            <a class="button button-primary" href="msc.html">瀏覽郵輪評價</a>
+            <a class="button button-ghost" href="add-review.html">分享你的體驗</a>
+          </div>
+        </div>
+      </section>
 
-      <h1>郵輪</h1>
-
-      <p class="description">
-        歡迎前往郵輪與河輪評價區<br>也歡迎留下你的心得與想法。
-      </p>
-
-      <img src="./images/hero.jpg" alt="hero" class="photo">
-
-      <p>
-        我們是蜜拉士愷<br> 分享郵輪、火車、環遊世界、數位遊牧的生活。出版多本旅遊和散文書籍。
-      </p>
-
+      <section class="home-about">
+        <div>
+          <p class="eyebrow">關於我們</p>
+          <h2>以旅人的眼光，記錄海上的每一段故事</h2>
+        </div>
+        <p>
+          我們是蜜拉士愷，分享郵輪、火車、環遊世界與數位遊牧的生活，
+          也出版過多本旅遊與散文書籍。這裡收集真正搭乘過郵輪的旅客心得，
+          希望讓每個人都能更容易找到適合自己的船與航程。
+        </p>
+      </section>
     </div>
-  </div>
+  </main>
 
-  <script>
-    // Wczytanie menu
-    fetch('./menu.html')
-      .then(response => response.text())
-      .then(html => {
-        document.getElementById('menu').innerHTML = html;
-
-        // aktywacja rozwijanego menu
-        const buttons = document.querySelectorAll('.menu-button');
-        buttons.forEach(button => {
-          button.addEventListener('click', () => {
-            const submenu = button.nextElementSibling;
-            submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
-          });
-        });
-      });
-  </script>
-
+  <script src="./site.js"></script>
 </body>
 </html>

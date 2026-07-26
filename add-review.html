@@ -1,201 +1,110 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
-  <title>Add Review</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="分享你的郵輪搭乘體驗，幫助其他旅客選擇適合自己的航程。">
+  <title>新增評價｜郵輪評價誌</title>
   <link rel="stylesheet" href="./style.css">
 </head>
-
 <body>
-
-  <!-- SIDEBAR / MENU test098 -->
   <div id="menu"></div>
 
-  <!-- CONTENT -->
-  <div class="content">
+  <main class="content">
+    <div class="page-shell">
+      <header class="form-page-header">
+        <p class="eyebrow">Share your journey</p>
+        <h1 class="page-title">分享你的搭乘體驗</h1>
+        <p class="page-intro">你的真實心得，能幫助下一位旅客做出更適合自己的選擇。</p>
+      </header>
 
-    <div class="form-box">
-      <h1>添加評價</h1>
+      <section class="form-box">
+        <h1>新增評價</h1>
+        <p class="form-lead">所有評價送出後會先經過管理員審核，再顯示於網站上。</p>
 
-      <form id="reviewForm">
+        <form id="reviewForm">
+          <div class="form-grid">
+            <div class="field field-full">
+              <label for="title">評價標題</label>
+              <input type="text" id="title" maxlength="120" required>
+            </div>
 
-        <label>標題</label>
-        <input type="text" id="title" required>
+            <div class="field field-full">
+              <label for="text">你的評價</label>
+              <textarea id="text" maxlength="5000" required></textarea>
+            </div>
 
-        <label>評價</label>
-        <textarea id="text" required></textarea>
-
-        <label>郵輪公司</label>
-            <select id="line" required>
-                <option value="">選擇</option>
-                <option value="MSC">MSC</option>
-                <option value="Costa">Costa</option>
-                <option value="Disney">Disney</option>
+            <div class="field">
+              <label for="line">郵輪公司</label>
+              <select id="line" required>
+                <option value="">請選擇</option>
+                <option value="MSC">MSC Cruises</option>
+                <option value="Costa">Costa Cruises</option>
+                <option value="Disney">Disney Cruise Line</option>
                 <option value="河輪">河輪</option>
-            </select>
+              </select>
+            </div>
 
-        <!-- DYNAMIC MENU -->
-        <div id="ship-container" style="display:none;">
-            <label>船</label>
-                 <select id="ship" required disabled></select>
-        </div>
+            <div class="field" id="ship-container" hidden>
+              <label for="ship">郵輪名稱</label>
+              <select id="ship" required disabled></select>
+            </div>
 
-        <label>搭船日期</label>
-        <input type="date" id="date" required>
+            <div class="field">
+              <label for="date">搭船日期</label>
+              <input type="date" id="date" required>
+            </div>
 
-        <h3>評價</h3>
+            <div class="field">
+              <label for="author">你的名字</label>
+              <input type="text" id="author" maxlength="80" required>
+            </div>
 
-        <label>裝潢</label>
-        <select id="decor">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
+            <h2 class="ratings-title">各項評分</h2>
+            <div class="rating-fields">
+              <div class="field rating-field">
+                <label for="decor">裝潢與設施</label>
+                <select id="decor">
+                  <option value="1">1 星</option><option value="2">2 星</option>
+                  <option value="3">3 星</option><option value="4">4 星</option>
+                  <option value="5" selected>5 星</option>
+                </select>
+              </div>
+              <div class="field rating-field">
+                <label for="room">客房</label>
+                <select id="room">
+                  <option value="1">1 星</option><option value="2">2 星</option>
+                  <option value="3">3 星</option><option value="4">4 星</option>
+                  <option value="5" selected>5 星</option>
+                </select>
+              </div>
+              <div class="field rating-field">
+                <label for="service">服務</label>
+                <select id="service">
+                  <option value="1">1 星</option><option value="2">2 星</option>
+                  <option value="3">3 星</option><option value="4">4 星</option>
+                  <option value="5" selected>5 星</option>
+                </select>
+              </div>
+              <div class="field rating-field">
+                <label for="food">餐飲</label>
+                <select id="food">
+                  <option value="1">1 星</option><option value="2">2 星</option>
+                  <option value="3">3 星</option><option value="4">4 星</option>
+                  <option value="5" selected>5 星</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
-        <label>房間</label>
-        <select id="room">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
-
-        <label>服務</label>
-        <select id="service">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
-
-        <label>食物</label>
-        <select id="food">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
-
-        <label>名字</label>
-        <input type="text" id="author" required>
-
-        <button type="submit" class="add-button" id="submitButton">保存</button>
-        <p id="formMessage" role="status" aria-live="polite"></p>
-
-      </form>
+          <button type="submit" class="add-button form-submit" id="submitButton">送出評價</button>
+          <p id="formMessage" role="status" aria-live="polite"></p>
+        </form>
+      </section>
     </div>
+  </main>
 
-  </div>
-
-  <!-- LOAD SIDEBAR -->
-  <script>
-    fetch('./menu.html')
-      .then(response => response.text())
-      .then(html => {
-        document.getElementById('menu').innerHTML = html;
-
-        const buttons = document.querySelectorAll('.menu-button');
-        buttons.forEach(button => {
-          button.addEventListener('click', () => {
-            const submenu = button.nextElementSibling;
-            submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
-          });
-        });
-      });
-  </script>
-
-  <!-- DYNAMIC REVIEW -->
-  <script>
-    document.getElementById("reviewForm").addEventListener("submit", async function(e) {
-      e.preventDefault();
-
-      const form = e.currentTarget;
-      const submitButton = document.getElementById("submitButton");
-      const formMessage = document.getElementById("formMessage");
-
-      const newOpinion = {
-        title: document.getElementById("title").value.trim(),
-        text: document.getElementById("text").value.trim(),
-        line: document.getElementById("line").value,
-        ship: document.getElementById("ship").value,
-        date: document.getElementById("date").value,
-        ratings: {
-          decor: Number(document.getElementById("decor").value),
-          room: Number(document.getElementById("room").value),
-          service: Number(document.getElementById("service").value),
-          food: Number(document.getElementById("food").value)
-        },
-        author: document.getElementById("author").value.trim()
-      };
-
-      submitButton.disabled = true;
-      submitButton.textContent = "保存中…";
-      formMessage.textContent = "";
-
-      try {
-        const response = await fetch('/add-opinion', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newOpinion)
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "無法保存評價");
-        }
-
-        const params = new URLSearchParams({
-          line: newOpinion.line,
-          ship: newOpinion.ship
-        });
-
-        window.location.href = `thank-you.html?${params.toString()}`;
-      } catch (error) {
-        formMessage.textContent = error.message;
-        submitButton.disabled = false;
-        submitButton.textContent = "保存";
-      }
-    });
-  </script>
-
-<script>
-const ships = {
-  "MSC": ["MSC Bellissima", "MSC Virtuosa", "MSC Seaside", "MSC World Europa"],
-  "Costa": ["Costa Toscana", "Costa Smeralda", "Costa Deliziosa"],
-  "Disney": ["Disney Dream", "Disney Fantasy", "Disney Wish"],
-  "河輪": [],
-};
-
-document.getElementById("line").addEventListener("change", function() {
-  const selectedLine = this.value;
-  const shipContainer = document.getElementById("ship-container");
-  const shipSelect = document.getElementById("ship");
-
-  if (ships[selectedLine] && ships[selectedLine].length > 0) {
-    shipContainer.style.display = "block";
-    shipSelect.disabled = false;
-    shipSelect.innerHTML = "";
-
-    ships[selectedLine].forEach(ship => {
-      const option = document.createElement("option");
-      option.value = ship;
-      option.textContent = ship;
-      shipSelect.appendChild(option);
-    });
-
-  } else {
-    shipContainer.style.display = "none";
-    shipSelect.disabled = true;
-    shipSelect.innerHTML = "";
-  }
-});
-</script>
-
+  <script src="./site.js"></script>
+  <script src="./add-review.js"></script>
 </body>
 </html>
