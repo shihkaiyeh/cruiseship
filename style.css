@@ -265,6 +265,16 @@ h3 {
   color: var(--gold-300);
 }
 
+.menu-button-link {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+}
+
+.menu-button-link::after {
+  content: "→";
+  font-size: 15px;
+}
+
 .submenu {
   display: grid;
   max-height: 0;
@@ -721,6 +731,33 @@ h3 {
   font-size: 13px;
 }
 
+.reviews-heading-filter {
+  align-items: end;
+}
+
+.review-filter {
+  display: grid;
+  min-width: min(280px, 100%);
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-filter select {
+  width: 100%;
+  padding: 10px 38px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+}
+
+.review-filter select:focus {
+  border-color: var(--ocean-500);
+  box-shadow: 0 0 0 3px rgba(35, 131, 168, 0.1);
+}
+
 #reviews {
   display: grid;
   gap: 22px;
@@ -1171,6 +1208,15 @@ h3 {
   .section-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .reviews-heading-filter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .review-filter {
+    width: 100%;
   }
 
   .catalog-filter input,

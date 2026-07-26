@@ -1,13 +1,13 @@
-NOWY SYSTEM KATALOGU CRUISESHIP
+CRUISESHIP – KATALOG, MENU I FORMULARZ
 
 WDROŻENIE
 
 1. Rozpakuj paczkę.
-2. Skopiuj całą zawartość folderu „cruiseship” do swojego lokalnego
-   folderu projektu w VS Code i zaakceptuj zastąpienie istniejących plików.
-3. W VS Code otwórz Source Control i wpisz opis:
-   Skalowalny katalog armatorów i statków
-4. Kliknij Commit, a następnie Sync Changes.
+2. Skopiuj całą zawartość folderu „cruiseship” do lokalnego folderu projektu.
+3. Zaakceptuj zastąpienie istniejących plików.
+4. W VS Code wykonaj Commit:
+   Pełny katalog statków i uproszczone menu
+5. Kliknij Sync Changes.
 
 Render powinien automatycznie rozpocząć wdrożenie.
 
@@ -15,41 +15,80 @@ WAŻNE
 
 - DATABASE_URL i ADMIN_PASSWORD pozostają zapisane w Renderze.
 - Nie dodawaj tych danych do żadnego pliku ani do GitHuba.
-- Neon, API opinii, zabezpieczenia i moderacja pozostały zachowane.
-- Stare adresy msc.html i msc-bellissima.html nadal działają i przekierowują
-  do nowego katalogu.
+- Neon, API, moderacja i zapis opinii nie zostały zmienione.
+- Stare adresy msc.html i msc-bellissima.html nadal działają.
+
+JAK DZIAŁA SIDEBAR
+
+W menu głównym znajdują się tylko firmy istotne dla Tajwanu i Singapuru:
+
+- Costa Cruises
+- MSC Cruises
+- 麗星郵輪 StarCruises
+- 星夢郵輪 Dream Cruises
+- Disney Cruise Line
+- Royal Caribbean
+- Princess Cruises
+
+Pod każdą firmą jest link do wszystkich jej opinii. W sidebarze widoczne są
+tylko wyróżnione statki pływające z Tajwanu lub Singapuru.
+
+Pozostałe firmy znajdują się na wspólnej stronie 其他郵輪.
+Firmy rzeczne znajdują się na wspólnej stronie 河輪.
+
+JAK DZIAŁA FORMULARZ
+
+Formularz korzysta z pełnego katalogu, niezależnie od sidebaru.
+
+1. Użytkownik wpisuje pierwsze litery nazwy firmy i wybiera ją z listy.
+2. Następnie wpisuje pierwsze litery nazwy statku i wybiera statek.
+3. Można wybrać wyłącznie firmę i statek zapisane w katalogu.
+
+Dzięki temu w bazie nie powstają literówki ani różne wersje tej samej nazwy.
 
 DODAWANIE NOWEGO STATKU
 
 1. Otwórz catalog-data.js.
-2. Znajdź właściwą firmę w tablicy companies.
-3. W jej liście ships dodaj jeden wpis:
+2. Znajdź właściwą firmę.
+3. Dopisz nazwę statku w jej tablicy nazw, np.:
 
-   { slug: 'msc-nowa-nazwa', name: 'MSC Nowa Nazwa' },
+   'MSC Nowa Nazwa',
 
-4. Opcjonalnie dodaj zdjęcie do folderu images i wpisz:
+Statek automatycznie pojawi się w formularzu. Nie trzeba zmieniać Neon,
+Rendera ani tworzyć nowego pliku HTML.
 
-   {
-     slug: 'msc-nowa-nazwa',
-     name: 'MSC Nowa Nazwa',
-     image: 'images/msc-nowa-nazwa.jpg'
-   },
+WYRÓŻNIENIE STATKU W SIDEBARZE
 
-5. Zrób Commit i Sync Changes.
+W ostatnim parametrze definicji firmy znajduje się lista wyróżnionych statków,
+np.:
 
-Statek automatycznie pojawi się:
-- w katalogu firmy,
-- w wyszukiwarce,
-- w formularzu dodawania opinii,
-- na własnej uniwersalnej podstronie.
+   ['MSC Bellissima']
 
-Nie twórz dla niego nowego pliku HTML.
+Aby później pokazać MSC Grandiosa w sidebarze, zmień ją na:
+
+   ['MSC Bellissima', 'MSC Grandiosa']
+
+Wszystkie wcześniejsze opinie o tym statku pozostaną na swoim miejscu.
+
+PRZENIESIENIE FIRMY Z 其他郵輪 DO MENU GŁÓWNEGO
+
+W definicji firmy zmień:
+
+   'other'
+
+na:
+
+   'primary'
+
+Następnie wpisz wybrane statki w ostatnim parametrze. Wszystkie wcześniejsze
+opinie zostaną automatycznie przypisane do osobnej strony firmy.
 
 NAJWAŻNIEJSZE PLIKI
 
-- catalog-data.js – jedyne źródło listy firm i statków
-- ship.html + ship-page.js – wspólna strona każdego statku
-- line.html + line-page.js – wspólna strona każdej firmy
-- site.js – menu i wyszukiwarka
-- add-review.js – formularz oraz obsługa brakujących statków
+- catalog-data.js – pełna lista firm, statków i grup menu
+- site.js – krótki sidebar
+- add-review.js – przeszukiwalny formularz
+- line.html + line-page.js – wszystkie opinie jednej firmy
+- group.html + group-page.js – 河輪 i 其他郵輪
+- ship.html + ship-page.js – wyróżnione strony statków
 - reviews.js – opinie, średnie i przycisk „pokaż więcej”

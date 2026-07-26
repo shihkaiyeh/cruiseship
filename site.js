@@ -15,6 +15,10 @@
     return `line.html?line=${encodeURIComponent(company.id)}`;
   }
 
+  function groupUrl(group) {
+    return `group.html?group=${encodeURIComponent(group)}`;
+  }
+
   function currentLocationKey() {
     const file = window.location.pathname.split('/').pop() || 'home.html';
     return `${file}${window.location.search}`;
@@ -42,7 +46,9 @@
     const catalog = window.CRUISE_CATALOG;
     container.replaceChildren();
 
-    catalog.companies.forEach((company, index) => {
+    const primaryCompanies = catalog.getCompaniesByGroup('primary');
+
+    primaryCompanies.forEach((company, index) => {
       const item = document.createElement('div');
       item.className = 'menu-item';
 
@@ -56,24 +62,11 @@
       submenu.className = `submenu${index === 0 ? ' open' : ''}`;
       submenu.appendChild(createLink(`${company.name} 所有評價`, lineUrl(company)));
 
-      const featuredShips = company.featuredShips
-        .map(slug => catalog.getShip(slug))
-        .filter(Boolean);
+      const featuredShips = company.ships.filter(ship => ship.featured);
 
       featuredShips.forEach(ship => {
         submenu.appendChild(createLink(ship.name, shipUrl(ship)));
       });
-
-      if (company.ships.length > featuredShips.length) {
-        submenu.appendChild(
-          createLink(`查看全部 ${company.ships.length} 艘郵輪 →`, lineUrl(company), 'submenu-all-link')
-        );
-      } else if (company.ships.length === 0) {
-        const note = document.createElement('span');
-        note.className = 'submenu-note';
-        note.textContent = '船隻目錄即將推出';
-        submenu.appendChild(note);
-      }
 
       button.addEventListener('click', () => {
         const willOpen = !submenu.classList.contains('open');
@@ -84,51 +77,10 @@
       item.append(button, submenu);
       container.appendChild(item);
     });
-  }
 
-  function setupSearch(host, closeMenu) {
-    const search = host.querySelector('#shipSearch');
-    const results = host.querySelector('#shipSearchResults');
-    const catalog = window.CRUISE_CATALOG;
-
-    search?.addEventListener('input', () => {
-      const query = catalog.normalize(search.value);
-      results.replaceChildren();
-
-      if (!query) {
-        results.hidden = true;
-        return;
-      }
-
-      const matches = catalog.companies.flatMap(company => {
-        const companyMatch = catalog.normalize(company.name).includes(query);
-        return company.ships
-          .filter(ship => companyMatch || catalog.normalize(ship.name).includes(query))
-          .map(ship => ({ company, ship }));
-      }).slice(0, 12);
-
-      if (matches.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'search-empty';
-        empty.textContent = '找不到這艘郵輪';
-        results.appendChild(empty);
-
-        const addMissing = createLink('手動新增評價 →', 'add-review.html?missing=1', 'search-add-missing');
-        addMissing.addEventListener('click', closeMenu);
-        results.appendChild(addMissing);
-      } else {
-        matches.forEach(({ company, ship }) => {
-          const link = createLink(ship.name, shipUrl(ship), 'search-result-link');
-          const companyName = document.createElement('small');
-          companyName.textContent = company.name;
-          link.appendChild(companyName);
-          link.addEventListener('click', closeMenu);
-          results.appendChild(link);
-        });
-      }
-
-      results.hidden = false;
-    });
+    const riverLink = createLink('河輪', groupUrl('river'), 'menu-button menu-button-link');
+    const otherLink = createLink('其他郵輪', groupUrl('other'), 'menu-button menu-button-link');
+    container.append(riverLink, otherLink);
   }
 
   async function initMenu() {
@@ -172,7 +124,6 @@
 
       buildCatalogMenu(catalogContainer);
       markActiveLink(host);
-      setupSearch(host, closeMenu);
 
       host.querySelectorAll('a[href]').forEach(link => {
         link.addEventListener('click', closeMenu);
