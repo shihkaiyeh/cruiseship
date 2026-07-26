@@ -1,10 +1,14 @@
 const express = require('express');
+const crypto = require('crypto');
 const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 const submissionHistory = new Map();
+const loginHistory = new Map();
 
 if (!process.env.DATABASE_URL) {
   console.error('Missing DATABASE_URL environment variable');
@@ -55,6 +59,218 @@ function canSubmit(ip) {
   submissionHistory.set(ip, recentSubmissions);
   return true;
 }
+
+function canAttemptLogin(ip) {
+  const now = Date.now();
+  const fifteenMinutesAgo = now - 15 * 60 * 1000;
+  const recentAttempts = (loginHistory.get(ip) || [])
+    .filter(timestamp => timestamp > fifteenMinutesAgo);
+
+  if (recentAttempts.length >= 10) {
+    loginHistory.set(ip, recentAttempts);
+    return false;
+  }
+
+  recentAttempts.push(now);
+  loginHistory.set(ip, recentAttempts);
+  return true;
+}
+
+function safeEqual(firstValue, secondValue) {
+  const first = Buffer.from(firstValue);
+  const second = Buffer.from(secondValue);
+
+  return first.length === second.length
+    && crypto.timingSafeEqual(first, second);
+}
+
+function createAdminToken() {
+  const expiresAt = Date.now() + 8 * 60 * 60 * 1000;
+  const payload = Buffer.from(JSON.stringify({ expiresAt })).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', ADMIN_SECRET)
+    .update(payload)
+    .digest('base64url');
+
+  return `${payload}.${signature}`;
+}
+
+function verifyAdminToken(token) {
+  if (!token || !ADMIN_SECRET) {
+    return false;
+  }
+
+  const [payload, signature] = token.split('.');
+
+  if (!payload || !signature) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', ADMIN_SECRET)
+    .update(payload)
+    .digest('base64url');
+
+  if (!safeEqual(signature, expectedSignature)) {
+    return false;
+  }
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return Number.isFinite(data.expiresAt) && data.expiresAt > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function getCookie(req, name) {
+  const cookies = req.headers.cookie || '';
+
+  for (const cookie of cookies.split(';')) {
+    const [cookieName, ...valueParts] = cookie.trim().split('=');
+
+    if (cookieName === name) {
+      return decodeURIComponent(valueParts.join('='));
+    }
+  }
+
+  return '';
+}
+
+function requireAdmin(req, res, next) {
+  const token = getCookie(req, 'admin_session');
+
+  if (!verifyAdminToken(token)) {
+    return res.status(401).json({ error: 'Brak autoryzacji.' });
+  }
+
+  return next();
+}
+
+// LOGOWANIE ADMINISTRATORA
+app.post('/api/admin/login', (req, res) => {
+  if (!canAttemptLogin(req.ip)) {
+    return res.status(429).json({
+      error: 'Zbyt wiele prób logowania. Spróbuj ponownie za 15 minut.'
+    });
+  }
+
+  const password = typeof req.body.password === 'string'
+    ? req.body.password
+    : '';
+
+  if (!ADMIN_PASSWORD || !ADMIN_SECRET || !safeEqual(password, ADMIN_PASSWORD)) {
+    return res.status(401).json({ error: 'Nieprawidłowe hasło.' });
+  }
+
+  const token = createAdminToken();
+  res.setHeader(
+    'Set-Cookie',
+    `admin_session=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800`
+  );
+
+  loginHistory.delete(req.ip);
+  return res.json({ status: 'ok' });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  res.setHeader(
+    'Set-Cookie',
+    'admin_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'
+  );
+
+  return res.json({ status: 'ok' });
+});
+
+app.get('/api/admin/opinions', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        line,
+        ship,
+        TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
+        author,
+        title,
+        review_text AS text,
+        rating_decor,
+        rating_room,
+        rating_service,
+        rating_food,
+        status,
+        created_at
+      FROM opinions
+      ORDER BY
+        CASE status
+          WHEN 'pending' THEN 1
+          WHEN 'approved' THEN 2
+          ELSE 3
+        END,
+        created_at DESC,
+        id DESC
+    `);
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('Unable to load admin opinions:', error);
+    return res.status(500).json({ error: 'Nie udało się pobrać opinii.' });
+  }
+});
+
+app.patch('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const allowedStatuses = ['pending', 'approved', 'rejected'];
+  const status = req.body.status;
+
+  if (!Number.isInteger(id) || id <= 0 || !allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Nieprawidłowe dane.' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        UPDATE opinions
+        SET status = $1
+        WHERE id = $2
+        RETURNING id, status
+      `,
+      [status, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Nie znaleziono opinii.' });
+    }
+
+    return res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Unable to update opinion:', error);
+    return res.status(500).json({ error: 'Nie udało się zmienić opinii.' });
+  }
+});
+
+app.delete('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Nieprawidłowy identyfikator.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM opinions WHERE id = $1 RETURNING id',
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Nie znaleziono opinii.' });
+    }
+
+    return res.json({ status: 'ok', id });
+  } catch (error) {
+    console.error('Unable to delete opinion:', error);
+    return res.status(500).json({ error: 'Nie udało się usunąć opinii.' });
+  }
+});
 
 // POBIERANIE ZATWIERDZONYCH OPINII
 app.get('/api/opinions', async (req, res) => {
@@ -157,10 +373,11 @@ app.post('/add-opinion', async (req, res) => {
           rating_decor,
           rating_room,
           rating_service,
-          rating_food
+          rating_food,
+          status
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
+        RETURNING id, status
       `,
       [
         newOpinion.line,
@@ -178,7 +395,8 @@ app.post('/add-opinion', async (req, res) => {
 
     return res.status(201).json({
       status: 'ok',
-      id: result.rows[0].id
+      id: result.rows[0].id,
+      reviewStatus: result.rows[0].status
     });
   } catch (error) {
     console.error('Unable to save opinion:', error);

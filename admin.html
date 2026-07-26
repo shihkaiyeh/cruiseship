@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moderacja opinii</title>
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <section id="loginView" class="admin-panel">
+      <h1>Panel administratora</h1>
+      <p>Zaloguj się, aby moderować opinie.</p>
+
+      <form id="loginForm">
+        <label for="password">Hasło</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+        <button type="submit">Zaloguj się</button>
+      </form>
+
+      <p id="loginMessage" class="message" role="alert"></p>
+    </section>
+
+    <section id="moderationView" class="admin-panel" hidden>
+      <header class="admin-header">
+        <div>
+          <h1>Moderacja opinii</h1>
+          <p>Nowe wpisy oczekują na Twoją decyzję.</p>
+        </div>
+        <button type="button" id="logoutButton" class="secondary-button">Wyloguj</button>
+      </header>
+
+      <nav class="filters" aria-label="Filtry opinii">
+        <button type="button" data-filter="pending" class="active">Oczekujące</button>
+        <button type="button" data-filter="approved">Zatwierdzone</button>
+        <button type="button" data-filter="rejected">Odrzucone</button>
+        <button type="button" data-filter="all">Wszystkie</button>
+      </nav>
+
+      <p id="moderationMessage" class="message" role="status"></p>
+      <div id="opinionsList"></div>
+    </section>
+  </main>
+
+  <script src="./admin.js"></script>
+</body>
+</html>

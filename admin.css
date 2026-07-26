@@ -1,0 +1,205 @@
+:root {
+  color-scheme: light;
+  font-family: Arial, sans-serif;
+  background: #f3f5f8;
+  color: #1f2937;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.admin-shell {
+  width: min(1100px, calc(100% - 32px));
+  margin: 40px auto;
+}
+
+.admin-panel {
+  background: #fff;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
+}
+
+.admin-panel[hidden] {
+  display: none;
+}
+
+.admin-panel h1 {
+  margin-top: 0;
+}
+
+#loginForm {
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+}
+
+#loginForm input {
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+#loginForm button,
+.filters button,
+.actions button,
+.secondary-button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 700;
+}
+
+#loginForm button,
+.approve-button {
+  background: #087f5b;
+  color: #fff;
+}
+
+.admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.secondary-button,
+.filters button {
+  background: #e2e8f0;
+  color: #1f2937;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.filters button.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.message {
+  min-height: 24px;
+  color: #b42318;
+}
+
+.opinion-card {
+  padding: 24px;
+  border: 1px solid #dbe1e8;
+  border-radius: 12px;
+  margin-top: 16px;
+}
+
+.opinion-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.opinion-heading h2 {
+  margin: 0;
+}
+
+.status {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-pending {
+  background: #fff3bf;
+  color: #8a5900;
+}
+
+.status-approved {
+  background: #d3f9d8;
+  color: #087f5b;
+}
+
+.status-rejected {
+  background: #ffe3e3;
+  color: #c92a2a;
+}
+
+.opinion-meta,
+.opinion-author {
+  color: #64748b;
+}
+
+.opinion-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.ratings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+  margin: 18px 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reject-button {
+  background: #ffe8cc;
+  color: #9c4d00;
+}
+
+.delete-button {
+  background: #c92a2a;
+  color: #fff;
+}
+
+.empty-state {
+  padding: 32px;
+  text-align: center;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .admin-shell {
+    width: min(100% - 20px, 1100px);
+    margin: 10px auto;
+  }
+
+  .admin-panel {
+    padding: 20px;
+  }
+
+  .admin-header,
+  .opinion-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ratings {
+    grid-template-columns: 1fr;
+  }
+
+  .actions button {
+    flex: 1;
+  }
+}
