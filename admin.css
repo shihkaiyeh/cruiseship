@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap");
 
 :root {
   --navy-950: #081b2b;
@@ -42,8 +42,9 @@ button {
 
 h1,
 h2 {
-  font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
-  letter-spacing: 0.03em;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .admin-topbar {
@@ -75,8 +76,8 @@ h2 {
 }
 
 .admin-brand strong {
-  font-family: "Noto Serif TC", "PMingLiU", serif;
-  letter-spacing: 0.08em;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  letter-spacing: 0.03em;
 }
 
 .admin-topbar span:last-child {
@@ -105,7 +106,7 @@ h2 {
 .admin-panel h1 {
   margin: 0 0 12px;
   color: var(--navy-950);
-  font-size: clamp(34px, 5vw, 50px);
+  font-size: clamp(32px, 4vw, 46px);
 }
 
 .admin-panel > p,
