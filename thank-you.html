@@ -36,12 +36,17 @@
     const ship = window.CRUISE_CATALOG.getShip(params.get('ship'));
     const reviewsLink = document.getElementById('reviewsLink');
 
-    if (ship) {
+    if (ship?.featured) {
       reviewsLink.href = `ship.html?ship=${encodeURIComponent(ship.slug)}`;
       reviewsLink.textContent = `查看 ${ship.name} 評價`;
-    } else if (company) {
+    } else if (company?.menuGroup === 'primary') {
       reviewsLink.href = `line.html?line=${encodeURIComponent(company.id)}`;
       reviewsLink.textContent = `查看 ${company.name} 評價`;
+    } else if (company) {
+      reviewsLink.href = `group.html?group=${encodeURIComponent(company.menuGroup)}`;
+      reviewsLink.textContent = company.menuGroup === 'river'
+        ? '查看河輪評價'
+        : '查看其他郵輪評價';
     }
   </script>
 </body>

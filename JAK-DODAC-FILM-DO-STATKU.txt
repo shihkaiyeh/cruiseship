@@ -1,0 +1,90 @@
+JAK DODAĆ FILM YOUTUBE DO STRONY STATKU
+========================================
+
+Film dodaje się w jednym miejscu: w pliku catalog-data.js.
+
+
+1. Otwórz plik catalog-data.js w VS Code.
+
+2. Znajdź fragment:
+
+const youtubeVideoIds = {
+  'msc-bellissima': 'CNnpxih-GRY'
+};
+
+3. Dodaj kolejny statek w nowej linii, na przykład:
+
+const youtubeVideoIds = {
+  'msc-bellissima': 'CNnpxih-GRY',
+  'costa-serena': 'ID_NOWEGO_FILMU'
+};
+
+Pamiętaj o przecinku po poprzednim wpisie.
+
+
+SKĄD WZIĄĆ ID FILMU?
+====================
+
+Zwykły adres:
+https://www.youtube.com/watch?v=CNnpxih-GRY
+
+ID filmu:
+CNnpxih-GRY
+
+Krótki adres:
+https://youtu.be/CNnpxih-GRY
+
+ID filmu:
+CNnpxih-GRY
+
+Kod iframe:
+https://www.youtube.com/embed/CNnpxih-GRY
+
+ID filmu:
+CNnpxih-GRY
+
+Do catalog-data.js wklejasz wyłącznie ID filmu, a nie cały adres
+ani cały kod <iframe>.
+
+
+SKĄD WZIĄĆ NAZWĘ PO LEWEJ STRONIE?
+==================================
+
+Po lewej stronie wpisu znajduje się identyfikator statku, na przykład:
+
+'msc-bellissima'
+'costa-serena'
+
+Najłatwiej znaleźć go w adresie strony statku. Przykład:
+
+ship.html?ship=msc-bellissima
+
+Identyfikatorem jest część znajdująca się po „ship=”:
+
+msc-bellissima
+
+
+CO SIĘ STANIE NA STRONIE?
+=========================
+
+Jeżeli statek ma film wpisany w youtubeVideoIds:
+
+- pojawi się przycisk „▶ 觀看完整影片”;
+- po kliknięciu strona przewinie się do filmu;
+- film zostanie załadowany dopiero po kliknięciu.
+
+Jeżeli statek nie ma wpisanego filmu, przycisk i sekcja filmu
+nie będą widoczne.
+
+
+NA KONIEC
+=========
+
+1. Zapisz plik catalog-data.js.
+2. W VS Code wykonaj Commit.
+3. Kliknij Sync Changes.
+4. Poczekaj, aż Render automatycznie wdroży zmianę.
+
+Przykładowa nazwa commitu:
+
+Dodanie filmu YouTube do strony statku

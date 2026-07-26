@@ -1,149 +1,91 @@
 const catalog = window.CRUISE_CATALOG;
-const lineSelect = document.getElementById('line');
-const shipContainer = document.getElementById('ship-container');
-const shipSelect = document.getElementById('ship');
-const customLineContainer = document.getElementById('custom-line-container');
-const customLineInput = document.getElementById('custom-line');
-const customShipContainer = document.getElementById('custom-ship-container');
-const customShipInput = document.getElementById('custom-ship');
+const lineInput = document.getElementById('line');
+const lineOptions = document.getElementById('line-options');
+const shipInput = document.getElementById('ship');
+const shipOptions = document.getElementById('ship-options');
 const reviewForm = document.getElementById('reviewForm');
+let selectedCompany;
 
-function setCustomLineVisible(visible) {
-  customLineContainer.hidden = !visible;
-  customLineInput.required = visible;
-
-  if (!visible) {
-    customLineInput.value = '';
-  }
-}
-
-function setCustomShipVisible(visible) {
-  customShipContainer.hidden = !visible;
-  customShipInput.required = visible;
-
-  if (!visible) {
-    customShipInput.value = '';
-  }
+function option(value) {
+  const element = document.createElement('option');
+  element.value = value;
+  return element;
 }
 
 function populateCompanies() {
-  catalog.companies.forEach(company => {
-    const option = document.createElement('option');
-    option.value = company.id;
-    option.textContent = company.name;
-    lineSelect.appendChild(option);
-  });
+  const menuOrder = { primary: 0, river: 1, other: 2 };
+  const sortedCompanies = [...catalog.companies].sort((a, b) =>
+    menuOrder[a.menuGroup] - menuOrder[b.menuGroup] ||
+    a.name.localeCompare(b.name, 'zh-Hant')
+  );
 
-  const other = document.createElement('option');
-  other.value = '__other__';
-  other.textContent = '找不到郵輪公司／手動輸入';
-  lineSelect.appendChild(other);
+  lineOptions.replaceChildren(
+    ...sortedCompanies.map(company => option(company.name))
+  );
 }
 
-function populateShips(company, selectedSlug = '') {
-  shipSelect.replaceChildren();
+function populateShips(company, requestedShip = '') {
+  selectedCompany = company;
+  shipOptions.replaceChildren(
+    ...company.ships.map(ship => option(ship.name))
+  );
+  shipInput.disabled = false;
+  shipInput.placeholder = '輸入名稱或從清單選擇…';
+  shipInput.value = '';
 
-  const prompt = document.createElement('option');
-  prompt.value = '';
-  prompt.textContent = '請選擇';
-  shipSelect.appendChild(prompt);
-
-  company.ships.forEach(ship => {
-    const option = document.createElement('option');
-    option.value = ship.slug;
-    option.textContent = ship.name;
-    shipSelect.appendChild(option);
-  });
-
-  const other = document.createElement('option');
-  other.value = '__other__';
-  other.textContent = '找不到我的郵輪／手動輸入';
-  shipSelect.appendChild(other);
-
-  shipContainer.hidden = false;
-  shipSelect.disabled = false;
-
-  if (selectedSlug && catalog.getShip(selectedSlug)?.companyId === company.id) {
-    shipSelect.value = selectedSlug;
+  const ship = catalog.getShip(requestedShip);
+  if (ship?.companyId === company.id) {
+    shipInput.value = ship.name;
   }
 }
 
-function handleLineChange(selectedShip = '') {
-  const company = catalog.getCompany(lineSelect.value);
-  const isOtherCompany = lineSelect.value === '__other__';
-
-  setCustomLineVisible(isOtherCompany);
-  setCustomShipVisible(isOtherCompany);
-
-  if (isOtherCompany) {
-    shipContainer.hidden = true;
-    shipSelect.disabled = true;
-    shipSelect.replaceChildren();
-    return;
-  }
-
-  if (!company) {
-    shipContainer.hidden = true;
-    shipSelect.disabled = true;
-    shipSelect.replaceChildren();
-    setCustomShipVisible(false);
-    return;
-  }
-
-  if (company.ships.length === 0) {
-    shipContainer.hidden = true;
-    shipSelect.disabled = true;
-    shipSelect.replaceChildren();
-    setCustomShipVisible(true);
-    return;
-  }
-
-  populateShips(company, selectedShip);
-  setCustomShipVisible(shipSelect.value === '__other__');
+function clearShips() {
+  selectedCompany = undefined;
+  shipOptions.replaceChildren();
+  shipInput.value = '';
+  shipInput.disabled = true;
+  shipInput.placeholder = '請先選擇郵輪公司';
 }
 
-lineSelect.addEventListener('change', () => handleLineChange());
+function resolveCompanyInput() {
+  const company = catalog.getCompany(lineInput.value);
 
-shipSelect.addEventListener('change', () => {
-  setCustomShipVisible(shipSelect.value === '__other__');
+  if (company) {
+    lineInput.value = company.name;
+    populateShips(company);
+  } else {
+    clearShips();
+  }
+}
+
+lineInput.addEventListener('input', () => {
+  const company = catalog.getCompany(lineInput.value);
+
+  if (company && company.id !== selectedCompany?.id) {
+    populateShips(company);
+  } else if (!company) {
+    clearShips();
+  }
 });
+
+lineInput.addEventListener('change', resolveCompanyInput);
 
 function applyQuerySelection() {
   const params = new URLSearchParams(window.location.search);
-  const requestedLine = params.get('line');
   const requestedShip = params.get('ship');
   const requestedShipData = catalog.getShip(requestedShip);
-
-  if (params.get('missing') === '1') {
-    lineSelect.value = '__other__';
-    handleLineChange();
-    customLineInput.focus();
-    return;
-  }
-
-  const company = catalog.getCompany(requestedLine) ||
+  const company = catalog.getCompany(params.get('line')) ||
     catalog.getCompany(requestedShipData?.companyId);
 
   if (company) {
-    lineSelect.value = company.id;
-    handleLineChange(requestedShip);
+    lineInput.value = company.name;
+    populateShips(company, requestedShip);
   }
 }
 
-function selectedLineName() {
-  if (lineSelect.value === '__other__') {
-    return customLineInput.value.trim();
-  }
-
-  return catalog.getCompany(lineSelect.value)?.formValue || '';
-}
-
-function selectedShipName() {
-  if (customShipInput.required) {
-    return customShipInput.value.trim();
-  }
-
-  return catalog.getShip(shipSelect.value)?.name || '';
+function selectedShip() {
+  const ship = catalog.getShip(shipInput.value);
+  return ship?.companyId === selectedCompany?.id ? ship : undefined;
 }
 
 reviewForm.addEventListener('submit', async event => {
@@ -151,11 +93,26 @@ reviewForm.addEventListener('submit', async event => {
 
   const submitButton = document.getElementById('submitButton');
   const formMessage = document.getElementById('formMessage');
+  const company = catalog.getCompany(lineInput.value);
+  const ship = selectedShip();
+
+  if (!company) {
+    formMessage.textContent = '請從清單中選擇郵輪公司。';
+    lineInput.focus();
+    return;
+  }
+
+  if (!ship) {
+    formMessage.textContent = '請從清單中選擇郵輪名稱。';
+    shipInput.focus();
+    return;
+  }
+
   const newOpinion = {
     title: document.getElementById('title').value.trim(),
     text: document.getElementById('text').value.trim(),
-    line: selectedLineName(),
-    ship: selectedShipName(),
+    line: company.formValue,
+    ship: ship.name,
     date: document.getElementById('date').value,
     ratings: {
       decor: Number(document.getElementById('decor').value),
@@ -165,11 +122,6 @@ reviewForm.addEventListener('submit', async event => {
     },
     author: document.getElementById('author').value.trim()
   };
-
-  if (!newOpinion.line || !newOpinion.ship) {
-    formMessage.textContent = '請選擇或輸入郵輪公司與郵輪名稱。';
-    return;
-  }
 
   submitButton.disabled = true;
   submitButton.textContent = '送出中…';
@@ -187,10 +139,9 @@ reviewForm.addEventListener('submit', async event => {
       throw new Error(data.error || '目前無法送出評價');
     }
 
-    const knownShip = catalog.getShip(newOpinion.ship);
     const params = new URLSearchParams({
-      line: catalog.getCompany(newOpinion.line)?.id || newOpinion.line,
-      ship: knownShip?.slug || newOpinion.ship
+      line: company.id,
+      ship: ship.slug
     });
     window.location.href = `thank-you.html?${params.toString()}`;
   } catch (error) {
