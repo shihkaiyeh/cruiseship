@@ -38,16 +38,23 @@
               <label for="line">郵輪公司</label>
               <select id="line" required>
                 <option value="">請選擇</option>
-                <option value="MSC">MSC Cruises</option>
-                <option value="Costa">Costa Cruises</option>
-                <option value="Disney">Disney Cruise Line</option>
-                <option value="河輪">河輪</option>
               </select>
             </div>
 
             <div class="field" id="ship-container" hidden>
               <label for="ship">郵輪名稱</label>
               <select id="ship" required disabled></select>
+            </div>
+
+            <div class="field" id="custom-line-container" hidden>
+              <label for="custom-line">請輸入郵輪公司名稱</label>
+              <input type="text" id="custom-line" maxlength="60" autocomplete="organization">
+            </div>
+
+            <div class="field" id="custom-ship-container" hidden>
+              <label for="custom-ship">請輸入郵輪名稱</label>
+              <input type="text" id="custom-ship" maxlength="100">
+              <small class="field-help">送出後，管理員會確認名稱並決定是否加入郵輪目錄。</small>
             </div>
 
             <div class="field">
@@ -104,6 +111,7 @@
     </div>
   </main>
 
+  <script src="./catalog-data.js"></script>
   <script src="./site.js"></script>
   <script src="./add-review.js"></script>
 </body>

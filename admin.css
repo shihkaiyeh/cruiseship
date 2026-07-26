@@ -254,6 +254,16 @@ h2 {
   font-size: 14px;
 }
 
+.catalog-alert {
+  padding: 10px 13px;
+  border-left: 3px solid var(--gold);
+  border-radius: 3px;
+  background: #fff7e3;
+  color: #775218;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .opinion-text {
   padding: 16px 0;
   white-space: pre-wrap;

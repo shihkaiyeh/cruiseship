@@ -23,24 +23,25 @@
 
       <div class="thank-you-actions">
         <a href="home.html" class="thank-you-button secondary">回到首頁</a>
-        <a href="msc.html" id="reviewsLink" class="thank-you-button primary">查看郵輪評價</a>
+        <a href="home.html" id="reviewsLink" class="thank-you-button primary">瀏覽郵輪評價</a>
       </div>
     </section>
   </main>
 
+  <script src="./catalog-data.js"></script>
   <script src="./site.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
-    const line = params.get('line');
-    const ship = params.get('ship');
+    const company = window.CRUISE_CATALOG.getCompany(params.get('line'));
+    const ship = window.CRUISE_CATALOG.getShip(params.get('ship'));
     const reviewsLink = document.getElementById('reviewsLink');
 
-    if (ship === 'MSC Bellissima') {
-      reviewsLink.href = 'msc-bellissima.html';
-      reviewsLink.textContent = '查看 MSC Bellissima 評價';
-    } else if (line === 'MSC') {
-      reviewsLink.href = 'msc.html';
-      reviewsLink.textContent = '查看 MSC 評價';
+    if (ship) {
+      reviewsLink.href = `ship.html?ship=${encodeURIComponent(ship.slug)}`;
+      reviewsLink.textContent = `查看 ${ship.name} 評價`;
+    } else if (company) {
+      reviewsLink.href = `line.html?line=${encodeURIComponent(company.id)}`;
+      reviewsLink.textContent = `查看 ${company.name} 評價`;
     }
   </script>
 </body>

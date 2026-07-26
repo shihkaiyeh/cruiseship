@@ -1,0 +1,55 @@
+NOWY SYSTEM KATALOGU CRUISESHIP
+
+WDROŻENIE
+
+1. Rozpakuj paczkę.
+2. Skopiuj całą zawartość folderu „cruiseship” do swojego lokalnego
+   folderu projektu w VS Code i zaakceptuj zastąpienie istniejących plików.
+3. W VS Code otwórz Source Control i wpisz opis:
+   Skalowalny katalog armatorów i statków
+4. Kliknij Commit, a następnie Sync Changes.
+
+Render powinien automatycznie rozpocząć wdrożenie.
+
+WAŻNE
+
+- DATABASE_URL i ADMIN_PASSWORD pozostają zapisane w Renderze.
+- Nie dodawaj tych danych do żadnego pliku ani do GitHuba.
+- Neon, API opinii, zabezpieczenia i moderacja pozostały zachowane.
+- Stare adresy msc.html i msc-bellissima.html nadal działają i przekierowują
+  do nowego katalogu.
+
+DODAWANIE NOWEGO STATKU
+
+1. Otwórz catalog-data.js.
+2. Znajdź właściwą firmę w tablicy companies.
+3. W jej liście ships dodaj jeden wpis:
+
+   { slug: 'msc-nowa-nazwa', name: 'MSC Nowa Nazwa' },
+
+4. Opcjonalnie dodaj zdjęcie do folderu images i wpisz:
+
+   {
+     slug: 'msc-nowa-nazwa',
+     name: 'MSC Nowa Nazwa',
+     image: 'images/msc-nowa-nazwa.jpg'
+   },
+
+5. Zrób Commit i Sync Changes.
+
+Statek automatycznie pojawi się:
+- w katalogu firmy,
+- w wyszukiwarce,
+- w formularzu dodawania opinii,
+- na własnej uniwersalnej podstronie.
+
+Nie twórz dla niego nowego pliku HTML.
+
+NAJWAŻNIEJSZE PLIKI
+
+- catalog-data.js – jedyne źródło listy firm i statków
+- ship.html + ship-page.js – wspólna strona każdego statku
+- line.html + line-page.js – wspólna strona każdej firmy
+- site.js – menu i wyszukiwarka
+- add-review.js – formularz oraz obsługa brakujących statków
+- reviews.js – opinie, średnie i przycisk „pokaż więcej”

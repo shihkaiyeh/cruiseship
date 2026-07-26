@@ -16,44 +16,15 @@
   <div class="ship-search">
     <input type="search" id="shipSearch" placeholder="搜尋郵輪名稱…" autocomplete="off">
   </div>
+  <div id="shipSearchResults" class="ship-search-results" hidden></div>
 
   <p class="sidebar-label">郵輪公司</p>
-  <nav id="cruiseCatalog">
-    <div class="menu-item" data-search-group>
-      <button class="menu-button" type="button" aria-expanded="true">MSC Cruises</button>
-      <div class="submenu open">
-        <a href="msc.html">MSC 所有評價</a>
-        <a href="msc-bellissima.html">MSC Bellissima</a>
-      </div>
-    </div>
-
-    <div class="menu-item" data-search-group>
-      <button class="menu-button" type="button" aria-expanded="false">Costa Cruises</button>
-      <div class="submenu">
-        <a href="#" aria-disabled="true">Costa Toscana</a>
-      </div>
-    </div>
-
-    <div class="menu-item" data-search-group>
-      <button class="menu-button" type="button" aria-expanded="false">Disney Cruise Line</button>
-      <div class="submenu">
-        <a href="#" aria-disabled="true">Disney Dream</a>
-      </div>
-    </div>
-
-    <div class="menu-item" data-search-group>
-      <button class="menu-button" type="button" aria-expanded="false">河輪</button>
-      <div class="submenu">
-        <a href="#" aria-disabled="true">Viking River</a>
-        <a href="#" aria-disabled="true">AmaWaterways</a>
-      </div>
-    </div>
-  </nav>
+  <nav id="cruiseCatalog" aria-label="郵輪公司與船隻"></nav>
 
   <p class="sidebar-label">快速連結</p>
   <div class="sidebar-actions">
     <a class="sidebar-link" href="home.html">首頁</a>
-    <a class="sidebar-link" href="msc.html">瀏覽所有評價</a>
+    <a class="sidebar-link" href="line.html?line=msc">瀏覽郵輪評價</a>
     <a class="sidebar-link" href="add-review.html">新增評價</a>
   </div>
 

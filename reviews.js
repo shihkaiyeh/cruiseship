@@ -95,7 +95,49 @@ function updateRatingSummary(opinions) {
   countElement.textContent = `${opinions.length} 則評價`;
 }
 
-async function loadReviews(filter) {
+function createEmptyReviews(options = {}) {
+  const empty = document.createElement('div');
+  empty.className = 'empty-reviews';
+
+  const title = createTextElement(
+    'h3',
+    'empty-reviews-title',
+    options.emptyTitle || '目前還沒有評價'
+  );
+  const text = createTextElement(
+    'p',
+    'empty-reviews-text',
+    options.emptyText || '還沒有人分享搭乘體驗。'
+  );
+  empty.append(title, text);
+
+  if (options.ctaHref) {
+    const link = document.createElement('a');
+    link.className = 'add-button empty-reviews-button';
+    link.href = options.ctaHref;
+    link.textContent = options.ctaText || '撰寫第一則評價';
+    empty.appendChild(link);
+  }
+
+  return empty;
+}
+
+function renderReviews(opinions, options = {}) {
+  const container = document.getElementById('reviews');
+  container.replaceChildren();
+  updateRatingSummary(opinions);
+
+  if (opinions.length === 0) {
+    container.appendChild(createEmptyReviews(options));
+    return;
+  }
+
+  opinions.forEach(opinion => {
+    container.appendChild(createReviewCard(opinion));
+  });
+}
+
+async function loadReviews(filter, options = {}) {
   const container = document.getElementById('reviews');
 
   try {
@@ -108,23 +150,19 @@ async function loadReviews(filter) {
     const opinions = await response.json();
     const filteredOpinions = opinions.filter(filter);
 
-    container.replaceChildren();
-    updateRatingSummary(filteredOpinions);
-
-    if (filteredOpinions.length === 0) {
-      container.appendChild(
-        createTextElement('p', 'empty-reviews', '目前還沒有評價。')
-      );
-      return;
-    }
-
-    filteredOpinions.forEach(opinion => {
-      container.appendChild(createReviewCard(opinion));
-    });
+    renderReviews(filteredOpinions, options);
+    return filteredOpinions;
   } catch (error) {
     updateRatingSummary([]);
     container.replaceChildren(
       createTextElement('p', 'reviews-error', '暫時無法載入評價，請稍後再試。')
     );
+    return [];
   }
 }
+
+window.ReviewsUI = {
+  loadReviews,
+  renderReviews,
+  updateRatingSummary
+};

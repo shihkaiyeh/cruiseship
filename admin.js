@@ -96,6 +96,18 @@ function renderOpinions() {
     card.appendChild(
       textElement('p', 'opinion-meta', `${opinion.line} · ${opinion.ship} · ${opinion.date}`)
     );
+
+    if (!window.CRUISE_CATALOG.isKnownShip(opinion.line, opinion.ship)) {
+      const catalogAlert = document.createElement('p');
+      catalogAlert.className = 'catalog-alert';
+
+      const companyIsKnown = Boolean(window.CRUISE_CATALOG.getCompany(opinion.line));
+      catalogAlert.textContent = companyIsKnown
+        ? '新郵輪：此船尚未加入郵輪目錄，請先確認名稱。'
+        : '新郵輪公司與郵輪：尚未加入目錄，請先確認名稱。';
+      card.appendChild(catalogAlert);
+    }
+
     card.appendChild(textElement('p', 'opinion-author', `姓名：${opinion.author}`));
     card.appendChild(textElement('p', 'opinion-text', opinion.text));
 
