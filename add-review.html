@@ -36,25 +36,30 @@
 
             <div class="field">
               <label for="line">郵輪公司</label>
-              <select id="line" required>
-                <option value="">請選擇</option>
-              </select>
+              <input
+                type="text"
+                id="line"
+                list="line-options"
+                placeholder="輸入名稱或從清單選擇…"
+                autocomplete="off"
+                required
+              >
+              <datalist id="line-options"></datalist>
             </div>
 
-            <div class="field" id="ship-container" hidden>
+            <div class="field" id="ship-container">
               <label for="ship">郵輪名稱</label>
-              <select id="ship" required disabled></select>
-            </div>
-
-            <div class="field" id="custom-line-container" hidden>
-              <label for="custom-line">請輸入郵輪公司名稱</label>
-              <input type="text" id="custom-line" maxlength="60" autocomplete="organization">
-            </div>
-
-            <div class="field" id="custom-ship-container" hidden>
-              <label for="custom-ship">請輸入郵輪名稱</label>
-              <input type="text" id="custom-ship" maxlength="100">
-              <small class="field-help">送出後，管理員會確認名稱並決定是否加入郵輪目錄。</small>
+              <input
+                type="text"
+                id="ship"
+                list="ship-options"
+                placeholder="請先選擇郵輪公司"
+                autocomplete="off"
+                required
+                disabled
+              >
+              <datalist id="ship-options"></datalist>
+              <small class="field-help">可以輸入名稱的前幾個字母快速搜尋。</small>
             </div>
 
             <div class="field">

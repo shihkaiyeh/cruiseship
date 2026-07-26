@@ -28,6 +28,9 @@
               </div>
             </div>
             <a class="add-button" id="addShipReview" href="add-review.html">分享搭乘體驗</a>
+            <a class="add-button video-scroll-button" id="shipVideoButton" href="#videoSection" hidden>
+              ▶ 觀看完整影片
+            </a>
           </div>
         </div>
       </section>
@@ -37,6 +40,26 @@
         <span>住宿 · 餐飲 · 服務 · 設施</span>
       </div>
       <section id="reviews" aria-live="polite"></section>
+
+      <section class="video-section" id="videoSection" hidden>
+        <div class="video-section-heading">
+          <p class="eyebrow">Video experience</p>
+          <h2>影音介紹</h2>
+          <p>看看我們在 YouTube 上的完整搭乘體驗。</p>
+        </div>
+        <div class="video-frame">
+          <iframe
+            id="shipVideoFrame"
+            title="郵輪搭乘體驗影片"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
+        <a class="youtube-link" id="shipYoutubeLink" href="#" target="_blank" rel="noopener noreferrer">
+          前往 YouTube 觀看 ↗
+        </a>
+      </section>
     </div>
   </main>
 

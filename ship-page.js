@@ -26,12 +26,40 @@
   const shipCompany = document.getElementById('shipCompany');
   const shipImage = document.getElementById('shipImage');
   const addReview = document.getElementById('addShipReview');
+  const videoButton = document.getElementById('shipVideoButton');
+  const videoSection = document.getElementById('videoSection');
+  const videoFrame = document.getElementById('shipVideoFrame');
+  const youtubeLink = document.getElementById('shipYoutubeLink');
 
   shipName.textContent = ship.name;
   shipCompany.textContent = ship.companyName;
   shipImage.src = ship.image;
   shipImage.alt = `${ship.name} 郵輪`;
   addReview.href = `add-review.html?line=${encodeURIComponent(ship.companyId)}&ship=${encodeURIComponent(ship.slug)}`;
+
+  if (ship.youtubeVideoId) {
+    const embedUrl =
+      `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ship.youtubeVideoId)}`;
+    const youtubeUrl =
+      `https://www.youtube.com/watch?v=${encodeURIComponent(ship.youtubeVideoId)}`;
+
+    videoButton.hidden = false;
+    youtubeLink.href = youtubeUrl;
+    videoFrame.title = `${ship.name} 搭乘體驗影片`;
+
+    videoButton.addEventListener('click', event => {
+      event.preventDefault();
+      videoSection.hidden = false;
+
+      if (!videoFrame.getAttribute('src')) {
+        videoFrame.src = embedUrl;
+      }
+
+      window.requestAnimationFrame(() => {
+        videoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
 
   window.ReviewsUI.loadReviews(
     opinion => window.CRUISE_CATALOG.normalize(opinion.ship) ===
