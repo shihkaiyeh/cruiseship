@@ -40,6 +40,19 @@
     message.classList.toggle('success', type === 'success');
   }
 
+  function signInFailureMessage(error) {
+    const text = auth.friendlyMessage(error);
+
+    if (
+      text === '電子信箱或密碼不正確。' ||
+      text === '目前無法完成操作，請稍後再試。'
+    ) {
+      return '找不到這個帳號。請先申請帳號。';
+    }
+
+    return text;
+  }
+
   function setFormBusy(form, isBusy) {
     form.querySelectorAll('button, input').forEach(control => {
       control.disabled = isBusy;
@@ -261,7 +274,7 @@
       const session = await auth.getSession();
       await activateProfile(session);
     } catch (error) {
-      setMessage(auth.friendlyMessage(error));
+      setMessage(signInFailureMessage(error));
     } finally {
       setFormBusy(form, false);
     }
