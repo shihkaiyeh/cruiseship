@@ -1122,6 +1122,53 @@ h3 {
   color: var(--danger);
 }
 
+.account-deleted-panel {
+  width: min(620px, 100%);
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 42px) 10px;
+  text-align: center;
+}
+
+.account-deleted-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  border: 1px solid rgba(21, 112, 145, 0.28);
+  border-radius: 50%;
+  background: rgba(21, 112, 145, 0.08);
+  color: var(--ocean-600);
+  font-size: 30px;
+  font-weight: 700;
+  place-items: center;
+}
+
+.account-deleted-panel h2 {
+  margin: 10px 0 14px;
+  color: var(--navy-950);
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.account-deleted-panel > p:not(.auth-step-label) {
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.8;
+}
+
+.account-deleted-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.account-deleted-actions .add-button,
+.account-deleted-actions .button {
+  min-width: 150px;
+}
+
 .auth-tabs {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

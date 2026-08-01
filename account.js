@@ -3,6 +3,7 @@
   const loading = document.getElementById('accountLoading');
   const guest = document.getElementById('guestAccount');
   const profile = document.getElementById('loggedInAccount');
+  const deletedPanel = document.getElementById('accountDeletedPanel');
   const message = document.getElementById('authMessage');
   const tabs = [...document.querySelectorAll('[data-auth-panel]')];
   const forms = [...document.querySelectorAll('[data-auth-form]')];
@@ -48,6 +49,7 @@
   function showPanel(panelName) {
     guest.hidden = false;
     profile.hidden = true;
+    deletedPanel.hidden = true;
     loading.hidden = true;
     setMessage('');
 
@@ -80,10 +82,20 @@
     loading.hidden = true;
     guest.hidden = true;
     profile.hidden = false;
+    deletedPanel.hidden = true;
     document.getElementById('accountName').textContent = displayName;
     document.getElementById('accountEmail').textContent = user.email || '';
     document.getElementById('accountInitial').textContent = displayName.trim().charAt(0) || '航';
     document.getElementById('profileNameInput').value = displayName;
+    setMessage('');
+  }
+
+  function showDeletedPanel() {
+    forms.forEach(form => form.reset());
+    loading.hidden = true;
+    guest.hidden = true;
+    profile.hidden = true;
+    deletedPanel.hidden = false;
     setMessage('');
   }
 
@@ -219,6 +231,12 @@
 
   document.querySelectorAll('[data-show-panel]').forEach(button => {
     button.addEventListener('click', () => showPanel(button.dataset.showPanel));
+  });
+
+  document.getElementById('createAccountAfterDelete').addEventListener('click', () => {
+    window.history.replaceState({}, '', '/account');
+    showPanel('signup');
+    document.getElementById('signupName').focus();
   });
 
   document.getElementById('loginForm').addEventListener('submit', async event => {
@@ -518,6 +536,14 @@
   });
 
   async function initialize() {
+    if (accountDeleted) {
+      sessionStorage.removeItem('cruiseVerificationEmail');
+      localStorage.removeItem(pendingTermsKey);
+      await auth.signOut().catch(() => {});
+      showDeletedPanel();
+      return;
+    }
+
     try {
       const session = await auth.getSession();
 
@@ -528,10 +554,6 @@
         showPanel('verify');
       } else {
         showPanel('login');
-
-        if (accountDeleted) {
-          setMessage('帳號與所有評價已刪除。', 'success');
-        }
       }
     } catch (error) {
       loading.textContent = '登入服務尚未設定完成，請稍後再試。';

@@ -21,6 +21,17 @@
       <section class="account-card" aria-live="polite">
         <div id="accountLoading" class="account-loading">正在確認登入狀態…</div>
 
+        <div id="accountDeletedPanel" class="account-deleted-panel" hidden>
+          <div class="account-deleted-icon" aria-hidden="true">✓</div>
+          <p class="auth-step-label">Account deleted</p>
+          <h2>帳號已刪除</h2>
+          <p>你的帳號與所有評價已永久刪除。若你之後想新增評價，可以建立新帳號。</p>
+          <div class="account-deleted-actions">
+            <button type="button" id="createAccountAfterDelete" class="add-button">建立新帳號</button>
+            <a href="/" class="button">返回首頁</a>
+          </div>
+        </div>
+
         <div id="guestAccount" hidden>
           <div class="auth-tabs" role="tablist" aria-label="帳號選項">
             <button type="button" class="auth-tab active" data-auth-panel="login" role="tab">登入</button>
