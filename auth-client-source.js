@@ -24,12 +24,16 @@ function friendlyMessage(error) {
     return '這個電子信箱已經註冊，請直接登入。';
   }
 
-  if (details.includes('INVALID_EMAIL_OR_PASSWORD') || details.includes('INVALID_PASSWORD')) {
+  if (details.includes('INVALID_EMAIL_OR_PASSWORD')) {
     return '電子信箱或密碼不正確。';
   }
 
-  if (details.includes('INVALID_CURRENT_PASSWORD')) {
+  if (details.includes('INVALID_CURRENT_PASSWORD') || details.includes('INVALID_PASSWORD')) {
     return '目前的密碼不正確。';
+  }
+
+  if (details.includes('DELETE') && (details.includes('DISABLED') || error?.status === 404)) {
+    return '目前無法自動刪除帳號，請聯絡管理員。';
   }
 
   if (details.includes('EMAIL_NOT_VERIFIED')) {
@@ -154,6 +158,20 @@ async function changePassword({ currentPassword, newPassword }) {
   return data;
 }
 
+async function deleteAccount(password) {
+  const token = await getToken();
+
+  if (!token) {
+    const error = new Error('AUTH_REQUIRED');
+    error.status = 401;
+    throw error;
+  }
+
+  const data = await run(client => client.deleteUser({ password }));
+  window.dispatchEvent(new CustomEvent('cruise-auth-changed'));
+  return { data, token };
+}
+
 async function requestPasswordReset(email) {
   return run(client => client.emailOtp.requestPasswordReset({ email }));
 }
@@ -211,6 +229,7 @@ async function updateNavigation(root = document) {
 window.CruiseAuth = {
   authFetch,
   changePassword,
+  deleteAccount,
   friendlyMessage,
   getSession,
   getToken,

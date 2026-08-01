@@ -59,6 +59,10 @@
               <label for="signupPasswordConfirm">再次輸入密碼</label>
               <input id="signupPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required>
             </div>
+            <label class="terms-consent" for="signupTerms">
+              <input id="signupTerms" type="checkbox" required>
+              <span>我已閱讀並同意<a href="/terms" target="_blank" rel="noopener">《隱私權政策與使用條款》</a>。</span>
+            </label>
             <button type="submit" class="add-button auth-submit">建立帳號</button>
           </form>
 
@@ -182,6 +186,29 @@
                   <input id="newAccountPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required>
                 </div>
                 <button type="submit" class="button account-settings-button">更新密碼</button>
+              </form>
+            </div>
+
+            <div class="account-danger-zone">
+              <div>
+                <h4>刪除帳號</h4>
+                <p>帳號與所有評價會永久刪除，而且無法復原。</p>
+              </div>
+              <button type="button" id="deleteAccountStart" class="button account-delete-start">刪除帳號</button>
+
+              <form id="deleteAccountForm" class="auth-form account-delete-form" hidden>
+                <div class="field">
+                  <label for="deleteAccountPassword">輸入目前的密碼</label>
+                  <input id="deleteAccountPassword" type="password" minlength="8" autocomplete="current-password" required>
+                </div>
+                <label class="terms-consent delete-confirmation" for="deleteAccountConfirm">
+                  <input id="deleteAccountConfirm" type="checkbox" required>
+                  <span>我了解帳號與所有評價將永久刪除。</span>
+                </label>
+                <div class="account-delete-actions">
+                  <button type="submit" class="button account-delete-confirm">永久刪除帳號</button>
+                  <button type="button" id="deleteAccountCancel" class="button account-delete-cancel">取消</button>
+                </div>
               </form>
             </div>
           </section>

@@ -9,6 +9,10 @@
   const reviewsLoading = document.getElementById('accountReviewsLoading');
   const reviewsList = document.getElementById('accountReviewsList');
   const reviewsEmpty = document.getElementById('accountReviewsEmpty');
+  const termsVersion = '2026-08-01';
+  const pendingTermsKey = 'cruisePendingTermsAcceptance';
+  const pendingCleanupKey = 'cruisePendingAccountCleanupToken';
+  const accountDeleted = new URLSearchParams(window.location.search).get('deleted') === '1';
   const returnPath = auth.safeReturnPath(
     new URLSearchParams(window.location.search).get('returnTo'),
     '/account'
@@ -190,6 +194,54 @@
     await loadMyOpinions();
   }
 
+  async function savePendingTermsAcceptance() {
+    if (localStorage.getItem(pendingTermsKey) !== termsVersion) {
+      return;
+    }
+
+    try {
+      const response = await auth.authFetch('/api/me/terms-acceptance', {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('TERMS_ACCEPTANCE_FAILED');
+      }
+
+      localStorage.removeItem(pendingTermsKey);
+    } catch (error) {
+      console.error('Unable to save terms acceptance:', error);
+    }
+  }
+
+  async function cleanupAccountData(token) {
+    const response = await fetch('/api/me/data', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      keepalive: true
+    });
+
+    if (!response.ok) {
+      throw new Error('ACCOUNT_DATA_CLEANUP_FAILED');
+    }
+
+    sessionStorage.removeItem(pendingCleanupKey);
+  }
+
+  async function retryPendingAccountCleanup() {
+    const token = sessionStorage.getItem(pendingCleanupKey);
+
+    if (!token) {
+      return;
+    }
+
+    try {
+      await cleanupAccountData(token);
+    } catch (error) {
+      console.error('Unable to finish account data cleanup:', error);
+    }
+  }
+
   tabs.forEach(tab => {
     tab.addEventListener('click', () => showPanel(tab.dataset.authPanel));
   });
@@ -210,6 +262,8 @@
         password: document.getElementById('loginPassword').value
       });
 
+      await savePendingTermsAcceptance();
+
       if (returnPath !== '/account') {
         window.location.href = returnPath;
         return;
@@ -229,9 +283,15 @@
     const form = event.currentTarget;
     const password = document.getElementById('signupPassword').value;
     const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+    const acceptedTerms = document.getElementById('signupTerms').checked;
 
     if (password !== passwordConfirm) {
       setMessage('兩次輸入的密碼不一致。');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setMessage('請先閱讀並同意隱私權政策與使用條款。');
       return;
     }
 
@@ -245,6 +305,7 @@
         email: verificationEmail,
         password
       });
+      localStorage.setItem(pendingTermsKey, termsVersion);
       sessionStorage.setItem('cruiseVerificationEmail', verificationEmail);
       showPanel('verify');
       setMessage('驗證碼已寄出，請查看電子郵件。', 'success');
@@ -270,6 +331,7 @@
 
       const session = await auth.getSession();
       if (session?.user) {
+        await savePendingTermsAcceptance();
         if (returnPath !== '/account') {
           window.location.href = returnPath;
           return;
@@ -421,6 +483,64 @@
     }
   });
 
+  const deleteAccountStart = document.getElementById('deleteAccountStart');
+  const deleteAccountForm = document.getElementById('deleteAccountForm');
+  const deleteAccountCancel = document.getElementById('deleteAccountCancel');
+
+  deleteAccountStart.addEventListener('click', () => {
+    deleteAccountStart.hidden = true;
+    deleteAccountForm.hidden = false;
+    document.getElementById('deleteAccountPassword').focus();
+  });
+
+  deleteAccountCancel.addEventListener('click', () => {
+    deleteAccountForm.reset();
+    deleteAccountForm.hidden = true;
+    deleteAccountStart.hidden = false;
+    setMessage('');
+  });
+
+  deleteAccountForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = document.getElementById('deleteAccountPassword').value;
+
+    if (!document.getElementById('deleteAccountConfirm').checked) {
+      setMessage('請先確認你了解帳號與所有評價將永久刪除。');
+      return;
+    }
+
+    setFormBusy(form, true);
+    deleteAccountCancel.disabled = true;
+    setMessage('');
+
+    try {
+      const result = await auth.deleteAccount(password);
+
+      if (result.data?.message === 'Verification email sent') {
+        sessionStorage.removeItem(pendingCleanupKey);
+        setMessage('請查看電子郵件並完成帳號刪除。', 'success');
+        return;
+      }
+
+      sessionStorage.setItem(pendingCleanupKey, result.token);
+
+      try {
+        await cleanupAccountData(result.token);
+      } catch (error) {
+        console.error('Account deleted, cleanup will be retried:', error);
+      }
+
+      window.location.href = '/account?deleted=1';
+    } catch (error) {
+      sessionStorage.removeItem(pendingCleanupKey);
+      setMessage(auth.friendlyMessage(error));
+    } finally {
+      setFormBusy(form, false);
+      deleteAccountCancel.disabled = false;
+    }
+  });
+
   document.getElementById('logoutButton').addEventListener('click', async event => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -440,14 +560,20 @@
 
   async function initialize() {
     try {
+      await retryPendingAccountCleanup();
       const session = await auth.getSession();
 
       if (session?.user) {
+        await savePendingTermsAcceptance();
         await activateProfile(session);
       } else if (verificationEmail) {
         showPanel('verify');
       } else {
         showPanel('login');
+
+        if (accountDeleted) {
+          setMessage('帳號與所有評價已刪除。', 'success');
+        }
       }
     } catch (error) {
       loading.textContent = '登入服務尚未設定完成，請稍後再試。';

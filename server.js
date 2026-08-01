@@ -7,6 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+const TERMS_VERSION = '2026-08-01';
 const NEON_AUTH_URL = (process.env.NEON_AUTH_URL || '').replace(/\/+$/, '');
 const NEON_AUTH_JWKS_URL = process.env.NEON_AUTH_JWKS_URL
   || (NEON_AUTH_URL ? `${NEON_AUTH_URL}/.well-known/jwks.json` : '');
@@ -47,6 +48,7 @@ app.get('/ships/:ship', sendPage('ship.html'));
 app.get('/groups/:group', sendPage('group.html'));
 
 app.get('/account', sendPage('account.html'));
+app.get('/terms', sendPage('terms.html'));
 
 app.get('/add-review', sendPage('add-review.html'));
 app.get('/add-review/:line', sendPage('add-review.html'));
@@ -552,6 +554,74 @@ app.put('/api/me/profile', requireUser, async (req, res) => {
   }
 });
 
+// ZAPISANIE WERSJI ZASAD zaakceptowanej podczas rejestracji.
+app.post('/api/me/terms-acceptance', requireUser, async (req, res) => {
+  const displayName = cleanText(req.auth.name, 30);
+
+  if (!isValidDisplayName(displayName)) {
+    return res.status(400).json({ error: '顯示名稱不正確。' });
+  }
+
+  try {
+    await pool.query(
+      `
+        INSERT INTO user_profiles (
+          user_id,
+          display_name,
+          terms_version,
+          terms_accepted_at
+        )
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+          terms_version = EXCLUDED.terms_version,
+          terms_accepted_at = EXCLUDED.terms_accepted_at,
+          updated_at = NOW()
+      `,
+      [req.auth.userId, displayName, TERMS_VERSION]
+    );
+
+    return res.json({ status: 'ok', termsVersion: TERMS_VERSION });
+  } catch (error) {
+    console.error('Unable to save terms acceptance:', error);
+    return res.status(500).json({
+      error: '暫時無法保存同意紀錄，請稍後再試。'
+    });
+  }
+});
+
+// USUNIĘCIE DANYCH APLIKACJI po usunięciu konta z Neon Auth.
+// Endpoint jest idempotentny: ponowne wywołanie nie powoduje błędu.
+app.delete('/api/me/data', requireUser, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    const opinionsResult = await client.query(
+      'DELETE FROM opinions WHERE user_id = $1',
+      [req.auth.userId]
+    );
+    await client.query(
+      'DELETE FROM user_profiles WHERE user_id = $1',
+      [req.auth.userId]
+    );
+    await client.query('COMMIT');
+
+    return res.json({
+      status: 'ok',
+      deletedOpinions: opinionsResult.rowCount
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Unable to delete user data:', error);
+    return res.status(500).json({
+      error: '暫時無法刪除帳號資料，請稍後再試。'
+    });
+  } finally {
+    client.release();
+  }
+});
+
 // ZAPISYWANIE OPINII — tylko dla zalogowanych użytkowników.
 app.post('/add-opinion', requireUser, async (req, res) => {
   const ratings = req.body.ratings || {};
@@ -654,9 +724,19 @@ async function startServer() {
       CREATE TABLE IF NOT EXISTS user_profiles (
         user_id TEXT PRIMARY KEY,
         display_name VARCHAR(30) NOT NULL,
+        terms_version TEXT,
+        terms_accepted_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+    `);
+    await pool.query(`
+      ALTER TABLE user_profiles
+      ADD COLUMN IF NOT EXISTS terms_version TEXT
+    `);
+    await pool.query(`
+      ALTER TABLE user_profiles
+      ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ
     `);
     await pool.query(`
       ALTER TABLE opinions

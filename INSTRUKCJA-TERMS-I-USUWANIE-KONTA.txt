@@ -1,0 +1,40 @@
+ETAP 3 — ZASADY I USUWANIE KONTA
+
+Co zostało dodane:
+
+1. Jedna wspólna strona:
+   https://cruiseship.onrender.com/terms
+
+   Zawiera prostą politykę prywatności i warunki korzystania po chińsku
+   tradycyjnym.
+
+2. Przy rejestracji trzeba zaznaczyć jedną zgodę na te zasady.
+
+3. W „我的帳號” na dole ustawień jest opcja „刪除帳號”.
+   Użytkownik wpisuje obecne hasło i potwierdza usunięcie.
+
+4. Usunięcie jest trwałe: kasuje konto i wszystkie opinie tego konta.
+
+
+CO MASZ ZROBIĆ
+
+1. Podmień wszystkie pliki z paczki w swoim folderze cruiseship.
+2. W VS Code zrób Commit i Sync Changes.
+3. Poczekaj, aż Render zakończy wdrożenie.
+
+Nie dodajesz żadnego SQL w Neon.
+Nie dodajesz żadnej nowej zmiennej w Render.
+
+
+JAK BEZPIECZNIE SPRAWDZIĆ
+
+1. Otwórz /terms i sprawdź tekst.
+2. Otwórz rejestrację i sprawdź, czy widać zgodę.
+3. Opcję usunięcia testuj tylko na niepotrzebnym koncie testowym.
+4. Dodaj na nim jedną testową opinię, a następnie usuń konto.
+5. Sprawdź, czy konto przestało działać i opinia zniknęła.
+
+UWAGA: usunięcia nie można cofnąć.
+
+Przed publicznym startem uzupełnimy na stronie docelowy sposób kontaktu
+i własną domenę.
