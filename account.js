@@ -12,6 +12,9 @@
   const reviewsEmpty = document.getElementById('accountReviewsEmpty');
   const accountBadge = document.getElementById('accountBadge');
   const accountBadgeProgress = document.getElementById('accountBadgeProgress');
+  const badgeAchievement = document.getElementById('badgeAchievement');
+  const badgeAchievementTitle = document.getElementById('badgeAchievementTitle');
+  const badgeAchievementClose = document.getElementById('badgeAchievementClose');
   const termsVersion = '2026-08-01';
   const pendingTermsKey = 'cruisePendingTermsAcceptance';
   const accountDeleted = new URLSearchParams(window.location.search).get('deleted') === '1';
@@ -21,6 +24,7 @@
   );
   let verificationEmail = sessionStorage.getItem('cruiseVerificationEmail') || '';
   let resetEmail = '';
+  let seenBadgeStorageKey = '';
 
   const statusLabels = {
     pending: {
@@ -94,6 +98,10 @@
   function showProfile(session) {
     const user = session.user;
     const displayName = user.name || '郵輪旅人';
+    const userIdentity = user.id || user.email || '';
+    seenBadgeStorageKey = userIdentity
+      ? `cruiseSeenBadge:${userIdentity}`
+      : '';
     loading.hidden = true;
     guest.hidden = true;
     profile.hidden = false;
@@ -139,6 +147,20 @@
       ? `已通過 ${count} 則評價`
       : '通過第一則評價後就會獲得第一枚徽章。';
     accountBadgeProgress.hidden = false;
+
+    if (!badge?.key || !badge?.label || !seenBadgeStorageKey) {
+      badgeAchievement.hidden = true;
+      return;
+    }
+
+    const lastSeenBadge = localStorage.getItem(seenBadgeStorageKey);
+    if (lastSeenBadge !== badge.key) {
+      badgeAchievementTitle.textContent = `恭喜！你獲得「${badge.label}」徽章！`;
+      badgeAchievement.hidden = false;
+      localStorage.setItem(seenBadgeStorageKey, badge.key);
+    } else {
+      badgeAchievement.hidden = true;
+    }
   }
 
   function averageRating(ratings = {}) {
@@ -266,6 +288,10 @@
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => showPanel(tab.dataset.authPanel));
+  });
+
+  badgeAchievementClose.addEventListener('click', () => {
+    badgeAchievement.hidden = true;
   });
 
   document.querySelectorAll('[data-show-panel]').forEach(button => {
@@ -565,6 +591,8 @@
     try {
       await auth.signOut();
       reviewsList.replaceChildren();
+      badgeAchievement.hidden = true;
+      seenBadgeStorageKey = '';
       showPanel('login');
       setMessage('你已登出。', 'success');
     } catch (error) {

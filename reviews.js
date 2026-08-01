@@ -39,6 +39,31 @@ function createReviewCard(opinion) {
 
   review.appendChild(createTextElement('h3', '', opinion.title || ''));
 
+  const author = document.createElement('div');
+  author.className = 'review-author';
+  author.appendChild(
+    createTextElement('span', 'review-author-name', `分享者：${opinion.author || ''}`)
+  );
+
+  const userBadge = createUserBadge(opinion.badge, opinion.approvedReviewCount);
+  if (userBadge) {
+    author.appendChild(userBadge);
+  }
+
+  const approvedReviewCount = Number(opinion.approvedReviewCount) || 0;
+  if (approvedReviewCount > 0) {
+    author.appendChild(createTextElement('span', 'review-author-separator', '·'));
+    author.appendChild(
+      createTextElement(
+        'span',
+        'review-author-count',
+        `已分享了${approvedReviewCount}則評價`
+      )
+    );
+  }
+
+  review.appendChild(author);
+
   const header = document.createElement('div');
   header.className = 'review-header';
   header.appendChild(createTextElement('span', '', `郵輪: ${opinion.ship || ''}`));
@@ -76,19 +101,6 @@ function createReviewCard(opinion) {
 
     review.appendChild(toggleTextButton);
   }
-
-  const author = document.createElement('div');
-  author.className = 'review-author';
-  author.appendChild(
-    createTextElement('span', 'review-author-name', `分享者：${opinion.author || ''}`)
-  );
-
-  const userBadge = createUserBadge(opinion.badge, opinion.approvedReviewCount);
-  if (userBadge) {
-    author.appendChild(userBadge);
-  }
-
-  review.appendChild(author);
 
   return review;
 }
