@@ -236,15 +236,20 @@ async function updateNavigation(root = document) {
   try {
     const session = await getSession();
     const isLoggedIn = Boolean(session?.user);
+    const isAccountPage = window.location.pathname.replace(/\/+$/, '') === '/account';
 
     links.forEach(link => {
       link.href = '/account';
-      link.textContent = isLoggedIn ? '我的帳號' : '登入／註冊';
+      link.textContent = isLoggedIn ? '我的帳號' : '登入／免費註冊';
+      link.hidden = isAccountPage;
     });
   } catch {
+    const isAccountPage = window.location.pathname.replace(/\/+$/, '') === '/account';
+
     links.forEach(link => {
       link.href = '/account';
-      link.textContent = '登入／註冊';
+      link.textContent = '登入／免費註冊';
+      link.hidden = isAccountPage;
     });
   }
 }
