@@ -32,6 +32,26 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'home.html'));
 });
 
+// CZYSTE ADRESY STRON
+// Pliki HTML pozostają wewnętrznymi szablonami, ale nie są widoczne w adresie.
+function sendPage(fileName) {
+  return (req, res) => res.sendFile(path.join(__dirname, fileName));
+}
+
+app.get('/cruise-lines/:line', sendPage('line.html'));
+app.get('/ships/:ship', sendPage('ship.html'));
+app.get('/groups/:group', sendPage('group.html'));
+
+app.get('/add-review', sendPage('add-review.html'));
+app.get('/add-review/:line', sendPage('add-review.html'));
+app.get('/add-review/:line/:ship', sendPage('add-review.html'));
+
+app.get('/thank-you', sendPage('thank-you.html'));
+app.get('/thank-you/:line', sendPage('thank-you.html'));
+app.get('/thank-you/:line/:ship', sendPage('thank-you.html'));
+
+app.get('/admin', sendPage('admin.html'));
+
 function cleanText(value, maxLength) {
   if (typeof value !== 'string') {
     return '';

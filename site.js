@@ -1,4 +1,67 @@
 (function () {
+  function encodeSegment(value) {
+    return encodeURIComponent(String(value || ''));
+  }
+
+  function pathSegments() {
+    return window.location.pathname
+      .split('/')
+      .filter(Boolean)
+      .map(segment => decodeURIComponent(segment));
+  }
+
+  function pathValue(section) {
+    const segments = pathSegments();
+    const sectionIndex = segments.indexOf(section);
+    return sectionIndex >= 0 ? segments[sectionIndex + 1] || '' : '';
+  }
+
+  function shipUrl(ship) {
+    return `/ships/${encodeSegment(ship.slug)}`;
+  }
+
+  function lineUrl(company) {
+    return `/cruise-lines/${encodeSegment(company.id)}`;
+  }
+
+  function groupUrl(group) {
+    return `/groups/${encodeSegment(group)}`;
+  }
+
+  function addReviewUrl(company, ship) {
+    if (company && ship) {
+      return `/add-review/${encodeSegment(company.id)}/${encodeSegment(ship.slug)}`;
+    }
+
+    if (company) {
+      return `/add-review/${encodeSegment(company.id)}`;
+    }
+
+    return '/add-review';
+  }
+
+  function thankYouUrl(company, ship) {
+    if (company && ship) {
+      return `/thank-you/${encodeSegment(company.id)}/${encodeSegment(ship.slug)}`;
+    }
+
+    if (company) {
+      return `/thank-you/${encodeSegment(company.id)}`;
+    }
+
+    return '/thank-you';
+  }
+
+  window.CruiseRoutes = {
+    pathSegments,
+    pathValue,
+    shipUrl,
+    lineUrl,
+    groupUrl,
+    addReviewUrl,
+    thankYouUrl
+  };
+
   function createLink(label, href, className = '') {
     const link = document.createElement('a');
     link.href = href;
@@ -7,21 +70,9 @@
     return link;
   }
 
-  function shipUrl(ship) {
-    return `ship.html?ship=${encodeURIComponent(ship.slug)}`;
-  }
-
-  function lineUrl(company) {
-    return `line.html?line=${encodeURIComponent(company.id)}`;
-  }
-
-  function groupUrl(group) {
-    return `group.html?group=${encodeURIComponent(group)}`;
-  }
-
   function currentLocationKey() {
-    const file = window.location.pathname.split('/').pop() || 'home.html';
-    return `${file}${window.location.search}`;
+    const pathname = window.location.pathname.replace(/\/+$/, '');
+    return pathname || '/';
   }
 
   function markActiveLink(host) {
@@ -30,7 +81,7 @@
     host.querySelectorAll('a[href]').forEach(link => {
       const href = link.getAttribute('href');
 
-      if (href === current || (current === 'home.html' && href === 'home.html')) {
+      if (href === current) {
         link.classList.add('active');
         const submenu = link.closest('.submenu');
 
@@ -91,7 +142,7 @@
     }
 
     try {
-      const response = await fetch('./menu.html');
+      const response = await fetch('/menu.html');
 
       if (!response.ok) {
         throw new Error('Menu could not be loaded');
@@ -129,7 +180,7 @@
         link.addEventListener('click', closeMenu);
       });
     } catch (error) {
-      host.innerHTML = '<a class="menu-toggle" href="home.html" aria-label="回到首頁">⌂</a>';
+      host.innerHTML = '<a class="menu-toggle" href="/" aria-label="回到首頁">⌂</a>';
     }
   }
 

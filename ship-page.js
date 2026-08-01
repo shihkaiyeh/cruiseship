@@ -1,6 +1,6 @@
 (function () {
-  const params = new URLSearchParams(window.location.search);
-  const ship = window.CRUISE_CATALOG.getShip(params.get('ship'));
+  const routes = window.CruiseRoutes;
+  const ship = window.CRUISE_CATALOG.getShip(routes.pathValue('ships'));
   const reviewsContainer = document.getElementById('reviews');
 
   if (!ship) {
@@ -12,7 +12,7 @@
     notFound.innerHTML = `
       <h1 class="empty-reviews-title">找不到這艘郵輪</h1>
       <p class="empty-reviews-text">它可能尚未加入目錄，或連結有誤。</p>
-      <a class="add-button empty-reviews-button" href="add-review.html?missing=1">手動新增評價</a>
+      <a class="add-button empty-reviews-button" href="/add-review">新增評價</a>
     `;
     reviewsContainer.replaceChildren(notFound);
     return;
@@ -35,7 +35,8 @@
   shipCompany.textContent = ship.companyName;
   shipImage.src = ship.image;
   shipImage.alt = `${ship.name} 郵輪`;
-  addReview.href = `add-review.html?line=${encodeURIComponent(ship.companyId)}&ship=${encodeURIComponent(ship.slug)}`;
+  const company = window.CRUISE_CATALOG.getCompany(ship.companyId);
+  addReview.href = routes.addReviewUrl(company, ship);
 
   if (ship.youtubeVideoId) {
     const embedUrl =

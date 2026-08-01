@@ -71,10 +71,11 @@ lineInput.addEventListener('input', () => {
 lineInput.addEventListener('change', resolveCompanyInput);
 
 function applyQuerySelection() {
-  const params = new URLSearchParams(window.location.search);
-  const requestedShip = params.get('ship');
+  const segments = window.CruiseRoutes.pathSegments();
+  const requestedLine = segments[0] === 'add-review' ? segments[1] || '' : '';
+  const requestedShip = segments[0] === 'add-review' ? segments[2] || '' : '';
   const requestedShipData = catalog.getShip(requestedShip);
-  const company = catalog.getCompany(params.get('line')) ||
+  const company = catalog.getCompany(requestedLine) ||
     catalog.getCompany(requestedShipData?.companyId);
 
   if (company) {
@@ -139,11 +140,7 @@ reviewForm.addEventListener('submit', async event => {
       throw new Error(data.error || '目前無法送出評價');
     }
 
-    const params = new URLSearchParams({
-      line: company.id,
-      ship: ship.slug
-    });
-    window.location.href = `thank-you.html?${params.toString()}`;
+    window.location.href = window.CruiseRoutes.thankYouUrl(company, ship);
   } catch (error) {
     formMessage.textContent = error.message;
     submitButton.disabled = false;

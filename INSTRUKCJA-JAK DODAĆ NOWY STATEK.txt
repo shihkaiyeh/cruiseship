@@ -1,42 +1,27 @@
 CRUISESHIP – KATALOG, MENU I FORMULARZ
-
-WDROŻENIE
-
-1. Rozpakuj paczkę.
-2. Skopiuj całą zawartość folderu „cruiseship” do lokalnego folderu projektu.
-3. Zaakceptuj zastąpienie istniejących plików.
-4. W VS Code wykonaj Commit:
-   Pełny katalog statków i uproszczone menu
-5. Kliknij Sync Changes.
-
-Render powinien automatycznie rozpocząć wdrożenie.
+======================================
 
 WAŻNE
+=====
 
-- DATABASE_URL i ADMIN_PASSWORD pozostają zapisane w Renderze.
-- Nie dodawaj tych danych do żadnego pliku ani do GitHuba.
-- Neon, API, moderacja i zapis opinii nie zostały zmienione.
-- Stare adresy msc.html i msc-bellissima.html nadal działają.
+- DATABASE_URL, ADMIN_PASSWORD i inne sekrety pozostają zapisane w Renderze.
+- Nie dodawaj tych danych do plików ani do GitHuba.
+- Neon, API, moderacja i zapis opinii nie wymagają zmian przy rozbudowie katalogu.
+
 
 JAK DZIAŁA SIDEBAR
+==================
 
-W menu głównym znajdują się tylko firmy istotne dla Tajwanu i Singapuru:
-
-- Costa Cruises
-- MSC Cruises
-- 麗星郵輪 StarCruises
-- 星夢郵輪 Dream Cruises
-- Disney Cruise Line
-- Royal Caribbean
-- Princess Cruises
-
+W menu głównym znajdują się tylko firmy istotne dla Tajwanu i Singapuru.
 Pod każdą firmą jest link do wszystkich jej opinii. W sidebarze widoczne są
 tylko wyróżnione statki pływające z Tajwanu lub Singapuru.
 
 Pozostałe firmy znajdują się na wspólnej stronie 其他郵輪.
 Firmy rzeczne znajdują się na wspólnej stronie 河輪.
 
+
 JAK DZIAŁA FORMULARZ
+====================
 
 Formularz korzysta z pełnego katalogu, niezależnie od sidebaru.
 
@@ -46,7 +31,9 @@ Formularz korzysta z pełnego katalogu, niezależnie od sidebaru.
 
 Dzięki temu w bazie nie powstają literówki ani różne wersje tej samej nazwy.
 
+
 DODAWANIE NOWEGO STATKU
+=======================
 
 1. Otwórz catalog-data.js.
 2. Znajdź właściwą firmę.
@@ -54,10 +41,13 @@ DODAWANIE NOWEGO STATKU
 
    'MSC Nowa Nazwa',
 
-Statek automatycznie pojawi się w formularzu. Nie trzeba zmieniać Neon,
-Rendera ani tworzyć nowego pliku HTML.
+Statek automatycznie pojawi się w formularzu i otrzyma własny czysty adres,
+np. /ships/msc-nowa-nazwa. Nie trzeba zmieniać Neon, Rendera ani tworzyć
+nowego pliku HTML.
+
 
 WYRÓŻNIENIE STATKU W SIDEBARZE
+==============================
 
 W ostatnim parametrze definicji firmy znajduje się lista wyróżnionych statków,
 np.:
@@ -70,7 +60,9 @@ Aby później pokazać MSC Grandiosa w sidebarze, zmień ją na:
 
 Wszystkie wcześniejsze opinie o tym statku pozostaną na swoim miejscu.
 
+
 PRZENIESIENIE FIRMY Z 其他郵輪 DO MENU GŁÓWNEGO
+=============================================
 
 W definicji firmy zmień:
 
@@ -81,13 +73,11 @@ na:
    'primary'
 
 Następnie wpisz wybrane statki w ostatnim parametrze. Wszystkie wcześniejsze
-opinie zostaną automatycznie przypisane do osobnej strony firmy.
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> a07de8dfb51877b5c7a59293b84ce1a729716829
+opinie zostaną automatycznie pokazane na osobnej stronie firmy.
+
 
 DODAWANIE FILMU YOUTUBE DO STATKU
+=================================
 
 1. Otwórz catalog-data.js.
 2. Znajdź obiekt youtubeVideoIds.
@@ -96,23 +86,16 @@ DODAWANIE FILMU YOUTUBE DO STATKU
    'msc-bellissima': 'CNnpxih-GRY',
 
 ID filmu to fragment adresu znajdujący się po „youtu.be/”, po „v=” albo po
-„youtube.com/embed/”.
+„youtube.com/embed/”. Więcej informacji zawiera JAK-DODAC-FILM-DO-STATKU.txt.
 
-Jeżeli statek ma przypisany film, na jego stronie automatycznie pojawi się
-przycisk „觀看完整影片” oraz odtwarzacz na dole. Jeśli filmu nie ma, przycisk
-i sekcja pozostają całkowicie ukryte.
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 63cffdaebbdea878e1e30f80b0a5b6d181c68aa3
->>>>>>> a07de8dfb51877b5c7a59293b84ce1a729716829
 
 NAJWAŻNIEJSZE PLIKI
+===================
 
-- catalog-data.js – pełna lista firm, statków i grup menu
-- site.js – krótki sidebar
+- catalog-data.js – pełna lista firm, statków i filmów
+- site.js – sidebar i generowanie czystych adresów
 - add-review.js – przeszukiwalny formularz
 - line.html + line-page.js – wszystkie opinie jednej firmy
 - group.html + group-page.js – 河輪 i 其他郵輪
-- ship.html + ship-page.js – wyróżnione strony statków
+- ship.html + ship-page.js – strony statków
 - reviews.js – opinie, średnie i przycisk „pokaż więcej”

@@ -57,9 +57,9 @@ Po lewej stronie wpisu znajduje się identyfikator statku, na przykład:
 
 Najłatwiej znaleźć go w adresie strony statku. Przykład:
 
-ship.html?ship=msc-bellissima
+https://cruiseship.onrender.com/ships/msc-bellissima
 
-Identyfikatorem jest część znajdująca się po „ship=”:
+Identyfikatorem jest ostatnia część adresu:
 
 msc-bellissima
 

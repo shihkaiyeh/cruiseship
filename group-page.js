@@ -1,7 +1,7 @@
 (function () {
   const catalog = window.CRUISE_CATALOG;
-  const params = new URLSearchParams(window.location.search);
-  const group = params.get('group');
+  const routes = window.CruiseRoutes;
+  const group = routes.pathValue('groups');
   const settings = {
     other: {
       title: '其他郵輪',
@@ -16,7 +16,7 @@
   }[group];
 
   if (!settings) {
-    window.location.replace('home.html');
+    window.location.replace('/');
     return;
   }
 
@@ -49,8 +49,8 @@
         : settings.emptyTitle,
       emptyText: '歡迎成為第一位分享搭乘體驗的旅客。',
       ctaHref: selectedCompany
-        ? `add-review.html?line=${encodeURIComponent(selectedCompany.id)}`
-        : 'add-review.html',
+        ? routes.addReviewUrl(selectedCompany)
+        : routes.addReviewUrl(),
       ctaText: '撰寫第一則評價'
     });
   }
@@ -62,7 +62,7 @@
     {
       emptyTitle: settings.emptyTitle,
       emptyText: '歡迎成為第一位分享搭乘體驗的旅客。',
-      ctaHref: 'add-review.html',
+      ctaHref: routes.addReviewUrl(),
       ctaText: '撰寫第一則評價'
     }
   ).then(opinions => {

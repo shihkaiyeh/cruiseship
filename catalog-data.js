@@ -1,5 +1,5 @@
 (function () {
-  const defaultImage = 'images/hero.jpg';
+  const defaultImage = '/images/hero.jpg';
 
   function slugify(value) {
     return String(value)

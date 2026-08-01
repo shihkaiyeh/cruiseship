@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>評價已送出｜郵輪評價誌</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <div id="menu"></div>
@@ -22,28 +22,30 @@
       <p class="thank-you-note">你不需要再次送出，我們已經收到這則評價。</p>
 
       <div class="thank-you-actions">
-        <a href="home.html" class="thank-you-button secondary">回到首頁</a>
-        <a href="home.html" id="reviewsLink" class="thank-you-button primary">瀏覽郵輪評價</a>
+        <a href="/" class="thank-you-button secondary">回到首頁</a>
+        <a href="/" id="reviewsLink" class="thank-you-button primary">瀏覽郵輪評價</a>
       </div>
     </section>
   </main>
 
-  <script src="./catalog-data.js"></script>
-  <script src="./site.js"></script>
+  <script src="/catalog-data.js"></script>
+  <script src="/site.js"></script>
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const company = window.CRUISE_CATALOG.getCompany(params.get('line'));
-    const ship = window.CRUISE_CATALOG.getShip(params.get('ship'));
+    const segments = window.CruiseRoutes.pathSegments();
+    const lineId = segments[0] === 'thank-you' ? segments[1] || '' : '';
+    const shipSlug = segments[0] === 'thank-you' ? segments[2] || '' : '';
+    const company = window.CRUISE_CATALOG.getCompany(lineId);
+    const ship = window.CRUISE_CATALOG.getShip(shipSlug);
     const reviewsLink = document.getElementById('reviewsLink');
 
     if (ship?.featured) {
-      reviewsLink.href = `ship.html?ship=${encodeURIComponent(ship.slug)}`;
+      reviewsLink.href = window.CruiseRoutes.shipUrl(ship);
       reviewsLink.textContent = `查看 ${ship.name} 評價`;
     } else if (company?.menuGroup === 'primary') {
-      reviewsLink.href = `line.html?line=${encodeURIComponent(company.id)}`;
+      reviewsLink.href = window.CruiseRoutes.lineUrl(company);
       reviewsLink.textContent = `查看 ${company.name} 評價`;
     } else if (company) {
-      reviewsLink.href = `group.html?group=${encodeURIComponent(company.menuGroup)}`;
+      reviewsLink.href = window.CruiseRoutes.groupUrl(company.menuGroup);
       reviewsLink.textContent = company.menuGroup === 'river'
         ? '查看河輪評價'
         : '查看其他郵輪評價';
