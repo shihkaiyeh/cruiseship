@@ -76,6 +76,33 @@ function isRating(value) {
   return Number.isInteger(value) && value >= 1 && value <= 5;
 }
 
+function isValidDisplayName(value) {
+  return value.length >= 2
+    && value.length <= 30
+    && !/[\u0000-\u001F\u007F]/u.test(value);
+}
+
+async function syncUserProfile(auth) {
+  const displayName = cleanText(auth.name, 30);
+
+  if (!isValidDisplayName(displayName)) {
+    return null;
+  }
+
+  const result = await pool.query(
+    `
+      INSERT INTO user_profiles (user_id, display_name)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id)
+      DO NOTHING
+      RETURNING display_name
+    `,
+    [auth.userId, displayName]
+  );
+
+  return result.rows[0]?.display_name || displayName;
+}
+
 function canSubmit(ip) {
   const now = Date.now();
   const oneHourAgo = now - 60 * 60 * 1000;
@@ -284,28 +311,30 @@ app.get('/api/admin/opinions', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        id,
-        line,
-        ship,
-        TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
-        author,
-        title,
-        review_text AS text,
-        rating_decor,
-        rating_room,
-        rating_service,
-        rating_food,
-        status,
-        created_at
+        opinions.id,
+        opinions.line,
+        opinions.ship,
+        TO_CHAR(opinions.cruise_date, 'YYYY-MM-DD') AS date,
+        COALESCE(user_profiles.display_name, opinions.author) AS author,
+        opinions.title,
+        opinions.review_text AS text,
+        opinions.rating_decor,
+        opinions.rating_room,
+        opinions.rating_service,
+        opinions.rating_food,
+        opinions.status,
+        opinions.created_at
       FROM opinions
+      LEFT JOIN user_profiles
+        ON user_profiles.user_id = opinions.user_id
       ORDER BY
-        CASE status
+        CASE opinions.status
           WHEN 'pending' THEN 1
           WHEN 'approved' THEN 2
           ELSE 3
         END,
-        created_at DESC,
-        id DESC
+        opinions.created_at DESC,
+        opinions.id DESC
     `);
 
     return res.json(result.rows);
@@ -375,21 +404,23 @@ app.get('/api/opinions', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        id,
-        line,
-        ship,
-        TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
-        author,
-        title,
-        review_text AS text,
-        rating_decor,
-        rating_room,
-        rating_service,
-        rating_food,
-        created_at
+        opinions.id,
+        opinions.line,
+        opinions.ship,
+        TO_CHAR(opinions.cruise_date, 'YYYY-MM-DD') AS date,
+        COALESCE(user_profiles.display_name, opinions.author) AS author,
+        opinions.title,
+        opinions.review_text AS text,
+        opinions.rating_decor,
+        opinions.rating_room,
+        opinions.rating_service,
+        opinions.rating_food,
+        opinions.created_at
       FROM opinions
-      WHERE status = 'approved'
-      ORDER BY created_at DESC, id DESC
+      LEFT JOIN user_profiles
+        ON user_profiles.user_id = opinions.user_id
+      WHERE opinions.status = 'approved'
+      ORDER BY opinions.created_at DESC, opinions.id DESC
     `);
 
     const opinions = result.rows.map(row => ({
@@ -414,6 +445,109 @@ app.get('/api/opinions', async (req, res) => {
     console.error('Unable to load opinions:', error);
     return res.status(500).json({
       error: '暫時無法載入評價，請稍後再試。'
+    });
+  }
+});
+
+// OPINIE ZALOGOWANEGO UŻYTKOWNIKA — razem ze statusem moderacji.
+app.get('/api/me/opinions', requireUser, async (req, res) => {
+  try {
+    await syncUserProfile(req.auth);
+
+    const result = await pool.query(
+      `
+        SELECT
+          id,
+          line,
+          ship,
+          TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
+          title,
+          review_text AS text,
+          rating_decor,
+          rating_room,
+          rating_service,
+          rating_food,
+          status,
+          created_at
+        FROM opinions
+        WHERE user_id = $1
+        ORDER BY created_at DESC, id DESC
+      `,
+      [req.auth.userId]
+    );
+
+    const opinions = result.rows.map(row => ({
+      id: row.id,
+      line: row.line,
+      ship: row.ship,
+      date: row.date,
+      title: row.title,
+      text: row.text,
+      status: row.status,
+      ratings: {
+        decor: row.rating_decor,
+        room: row.rating_room,
+        service: row.rating_service,
+        food: row.rating_food
+      },
+      createdAt: row.created_at
+    }));
+
+    return res.json(opinions);
+  } catch (error) {
+    console.error('Unable to load user opinions:', error);
+    return res.status(500).json({
+      error: '暫時無法載入你的評價，請稍後再試。'
+    });
+  }
+});
+
+// AKTUALIZACJA NAZWY PROFILU.
+// Nazwa jest też zachowywana w istniejących opiniach jako bezpieczna kopia.
+app.put('/api/me/profile', requireUser, async (req, res) => {
+  const displayName = cleanText(req.body.displayName, 30);
+
+  if (!isValidDisplayName(displayName)) {
+    return res.status(400).json({
+      error: '顯示名稱需要 2 到 30 個字元，且不能包含換行。'
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        WITH saved_profile AS (
+          INSERT INTO user_profiles (user_id, display_name)
+          VALUES ($1, $2)
+          ON CONFLICT (user_id)
+          DO UPDATE SET
+            display_name = EXCLUDED.display_name,
+            updated_at = NOW()
+          RETURNING display_name
+        ),
+        updated_opinions AS (
+          UPDATE opinions
+          SET author = $2
+          WHERE user_id = $1
+          RETURNING id
+        )
+        SELECT
+          saved_profile.display_name,
+          (SELECT COUNT(*)::INTEGER FROM updated_opinions) AS updated_opinions
+        FROM saved_profile
+      `,
+      [req.auth.userId, displayName]
+    );
+
+    return res.json({
+      status: 'ok',
+      displayName: result.rows[0].display_name,
+      updatedOpinions: result.rows[0].updated_opinions
+    });
+  } catch (error) {
+    console.error('Unable to update user profile:', error);
+    return res.status(500).json({
+      error: '暫時無法更新顯示名稱，請稍後再試。'
     });
   }
 });
@@ -460,6 +594,11 @@ app.post('/add-opinion', requireUser, async (req, res) => {
   }
 
   try {
+    await syncUserProfile({
+      ...req.auth,
+      name: newOpinion.author
+    });
+
     const result = await pool.query(
       `
         INSERT INTO opinions (
@@ -511,6 +650,14 @@ app.post('/add-opinion', requireUser, async (req, res) => {
 async function startServer() {
   try {
     await pool.query('SELECT 1');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_profiles (
+        user_id TEXT PRIMARY KEY,
+        display_name VARCHAR(30) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
     await pool.query(`
       ALTER TABLE opinions
       ADD COLUMN IF NOT EXISTS user_id TEXT

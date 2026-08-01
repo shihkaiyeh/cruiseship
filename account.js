@@ -6,12 +6,30 @@
   const message = document.getElementById('authMessage');
   const tabs = [...document.querySelectorAll('[data-auth-panel]')];
   const forms = [...document.querySelectorAll('[data-auth-form]')];
+  const reviewsLoading = document.getElementById('accountReviewsLoading');
+  const reviewsList = document.getElementById('accountReviewsList');
+  const reviewsEmpty = document.getElementById('accountReviewsEmpty');
   const returnPath = auth.safeReturnPath(
     new URLSearchParams(window.location.search).get('returnTo'),
     '/account'
   );
   let verificationEmail = sessionStorage.getItem('cruiseVerificationEmail') || '';
   let resetEmail = '';
+
+  const statusLabels = {
+    pending: {
+      label: '待審核',
+      note: '管理員審核後就會顯示在網站上。'
+    },
+    approved: {
+      label: '已通過',
+      note: '這則評價已經公開。'
+    },
+    rejected: {
+      label: '已拒絕',
+      note: '這則評價不會顯示在網站上。'
+    }
+  };
 
   function setMessage(text = '', type = 'error') {
     message.textContent = text;
@@ -55,13 +73,121 @@
 
   function showProfile(session) {
     const user = session.user;
+    const displayName = user.name || '郵輪旅人';
     loading.hidden = true;
     guest.hidden = true;
     profile.hidden = false;
-    document.getElementById('accountName').textContent = user.name || '郵輪旅人';
+    document.getElementById('accountName').textContent = displayName;
     document.getElementById('accountEmail').textContent = user.email || '';
-    document.getElementById('accountInitial').textContent = (user.name || '航').trim().charAt(0) || '航';
+    document.getElementById('accountInitial').textContent = displayName.trim().charAt(0) || '航';
+    document.getElementById('profileNameInput').value = displayName;
     setMessage('');
+  }
+
+  function createElement(tagName, className = '', text = '') {
+    const element = document.createElement(tagName);
+    element.className = className;
+    element.textContent = text;
+    return element;
+  }
+
+  function averageRating(ratings = {}) {
+    const values = ['decor', 'room', 'service', 'food']
+      .map(key => Number(ratings[key]))
+      .filter(value => Number.isFinite(value));
+
+    if (!values.length) {
+      return 0;
+    }
+
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  function reviewPublicUrl(opinion) {
+    const ship = window.CRUISE_CATALOG?.getShip(opinion.ship);
+
+    if (ship) {
+      return window.CruiseRoutes.shipUrl(ship);
+    }
+
+    const company = window.CRUISE_CATALOG?.getCompany(opinion.line);
+    return company ? window.CruiseRoutes.lineUrl(company) : '/';
+  }
+
+  function renderOpinion(opinion) {
+    const statusKey = statusLabels[opinion.status] ? opinion.status : 'pending';
+    const status = statusLabels[statusKey];
+    const card = createElement('article', 'account-review-card');
+
+    const heading = createElement('div', 'account-review-heading');
+    const title = createElement('h4', '', opinion.title || '未命名評價');
+    const badge = createElement('span', `account-status account-status-${statusKey}`, status.label);
+    heading.append(title, badge);
+
+    const meta = createElement('div', 'account-review-meta');
+    meta.append(
+      createElement('span', '', `郵輪：${opinion.ship || '—'}`),
+      createElement('span', '', `搭船日期：${opinion.date || '—'}`)
+    );
+
+    const excerpt = createElement('p', 'account-review-excerpt', opinion.text || '');
+    const footer = createElement('div', 'account-review-footer');
+    const rating = averageRating(opinion.ratings);
+    const score = createElement(
+      'span',
+      'account-review-score',
+      rating ? `${rating.toFixed(1)} ★` : '尚無評分'
+    );
+    const statusNote = createElement('span', 'account-review-status-note', status.note);
+    footer.append(score, statusNote);
+
+    if (statusKey === 'approved') {
+      const link = createElement('a', 'account-review-link', '查看公開評價');
+      link.href = reviewPublicUrl(opinion);
+      footer.appendChild(link);
+    }
+
+    card.append(heading, meta, excerpt, footer);
+    return card;
+  }
+
+  function showReviewsError(text) {
+    reviewsLoading.hidden = false;
+    reviewsLoading.textContent = text;
+    reviewsLoading.classList.add('error');
+    reviewsList.hidden = true;
+    reviewsEmpty.hidden = true;
+  }
+
+  async function loadMyOpinions() {
+    reviewsLoading.hidden = false;
+    reviewsLoading.textContent = '正在載入你的評價…';
+    reviewsLoading.classList.remove('error');
+    reviewsList.hidden = true;
+    reviewsEmpty.hidden = true;
+
+    try {
+      const response = await auth.authFetch('/api/me/opinions');
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'REVIEWS_UNAVAILABLE');
+      }
+
+      const opinions = Array.isArray(data) ? data : [];
+      reviewsList.replaceChildren(...opinions.map(renderOpinion));
+      reviewsLoading.hidden = true;
+      reviewsList.hidden = opinions.length === 0;
+      reviewsEmpty.hidden = opinions.length !== 0;
+    } catch (error) {
+      console.error('Unable to load account opinions:', error);
+      showReviewsError('暫時無法載入你的評價，請稍後再試。');
+    }
+  }
+
+  async function activateProfile(session) {
+    showProfile(session);
+    await loadMyOpinions();
   }
 
   tabs.forEach(tab => {
@@ -90,7 +216,7 @@
       }
 
       const session = await auth.getSession();
-      showProfile(session);
+      await activateProfile(session);
     } catch (error) {
       setMessage(auth.friendlyMessage(error));
     } finally {
@@ -148,7 +274,7 @@
           window.location.href = returnPath;
           return;
         }
-        showProfile(session);
+        await activateProfile(session);
       } else {
         showPanel('login');
         document.getElementById('loginEmail').value = verificationEmail;
@@ -224,6 +350,77 @@
     }
   });
 
+  document.getElementById('profileNameForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const input = document.getElementById('profileNameInput');
+    const displayName = input.value.trim();
+
+    if (displayName.length < 2 || displayName.length > 30) {
+      setMessage('顯示名稱需要 2 到 30 個字元。');
+      return;
+    }
+
+    setFormBusy(form, true);
+    setMessage('');
+
+    try {
+      await auth.updateName(displayName);
+      const response = await auth.authFetch('/api/me/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'PROFILE_UPDATE_FAILED');
+      }
+
+      document.getElementById('accountName').textContent = displayName;
+      document.getElementById('accountInitial').textContent = displayName.charAt(0) || '航';
+      setMessage('顯示名稱已更新，所有評價也會顯示新名稱。', 'success');
+    } catch (error) {
+      const text = error.message && /[\u3400-\u9FFF]/u.test(error.message)
+        ? error.message
+        : auth.friendlyMessage(error);
+      setMessage(text);
+    } finally {
+      setFormBusy(form, false);
+    }
+  });
+
+  document.getElementById('changePasswordForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newAccountPassword').value;
+    const passwordConfirm = document.getElementById('newAccountPasswordConfirm').value;
+
+    if (newPassword !== passwordConfirm) {
+      setMessage('兩次輸入的新密碼不一致。');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setMessage('密碼至少需要 8 個字元。');
+      return;
+    }
+
+    setFormBusy(form, true);
+    setMessage('');
+
+    try {
+      await auth.changePassword({ currentPassword, newPassword });
+      form.reset();
+      setMessage('密碼已更新，其他裝置已登出。', 'success');
+    } catch (error) {
+      setMessage(auth.friendlyMessage(error));
+    } finally {
+      setFormBusy(form, false);
+    }
+  });
+
   document.getElementById('logoutButton').addEventListener('click', async event => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -231,6 +428,7 @@
 
     try {
       await auth.signOut();
+      reviewsList.replaceChildren();
       showPanel('login');
       setMessage('你已登出。', 'success');
     } catch (error) {
@@ -245,7 +443,7 @@
       const session = await auth.getSession();
 
       if (session?.user) {
-        showProfile(session);
+        await activateProfile(session);
       } else if (verificationEmail) {
         showPanel('verify');
       } else {

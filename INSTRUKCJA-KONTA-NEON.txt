@@ -1,4 +1,4 @@
-KONTA UŻYTKOWNIKÓW — WDROŻENIE ETAPU 1
+KONTA UŻYTKOWNIKÓW — WDROŻENIE ETAPU 2
 =======================================
 
 Co zawiera ta paczka:
@@ -8,22 +8,16 @@ Co zawiera ta paczka:
 - odzyskiwanie hasła kodem,
 - stronę /account (我的帳號),
 - dodawanie opinii tylko przez zalogowanych użytkowników,
-- zapis user_id przy każdej nowej opinii.
+- zapis user_id przy każdej nowej opinii,
+- listę własnych opinii ze statusem moderacji,
+- zmianę wyświetlanej nazwy (także przy wcześniejszych opiniach tego konta),
+- zmianę hasła po podaniu obecnego hasła.
 
-1. RENDER — DODAJ JEDNĄ ZMIENNĄ
+1. RENDER — NICZEGO NOWEGO NIE DODAWAJ
 --------------------------------
-Otwórz:
-Render -> cruiseship -> Environment -> Edit
-
-Dodaj:
-KEY:   NEON_AUTH_URL
-VALUE: skopiuj dokładnie pole „Auth URL” z:
-       Neon -> Auth -> Configuration -> Project Info
-
-To jest publiczny adres usługi logowania, a nie hasło.
-Nie wklejaj do GitHuba DATABASE_URL, ADMIN_PASSWORD ani ADMIN_SECRET.
-
-Kliknij „Save, rebuild, and deploy”.
+Jeżeli etap 1 już działa, zmienna NEON_AUTH_URL jest ustawiona poprawnie.
+Nie trzeba teraz dodawać zmiennych ani ręcznie tworzyć tabel w Neon.
+Serwer sam bezpiecznie utworzy brakującą tabelę profili podczas wdrożenia.
 
 2. PLIKI I GITHUB
 ------------------
@@ -36,16 +30,20 @@ Kliknij „Save, rebuild, and deploy”.
 3. TEST PO WDROŻENIU
 --------------------
 1) Otwórz https://cruiseship.onrender.com/account
-2) Utwórz konto testowe.
-3) Odbierz kod z wiadomości wysłanej przez auth@mail.myneon.app.
-4) Wpisz kod i zaloguj się.
-5) Otwórz /add-review i wyślij testową opinię.
-6) Sprawdź opinię w dotychczasowym panelu /admin.
-7) Wyloguj się i sprawdź, czy /add-review prosi o ponowne zalogowanie.
+2) Zaloguj się na istniejące konto testowe.
+3) Sprawdź, czy w sekcji 我的評價 widać opinię dodaną po uruchomieniu kont.
+4) Przy opinii sprawdź status: 待審核 / 已通過 / 已拒絕.
+5) Zmień wyświetlaną nazwę i odśwież publiczną stronę opinii.
+6) Zmień hasło, wyloguj się i zaloguj nowym hasłem.
+7) Otwórz /admin i upewnij się, że moderacja nadal działa.
 
 Ważne:
 - stare opinie pozostają bez zmian,
+- opinie sprzed uruchomienia kont nie pojawią się automatycznie na profilu,
 - czytanie opinii nadal jest publiczne,
 - nowe opinie nadal czekają na zatwierdzenie moderatora,
+- każdy użytkownik widzi wyłącznie własne opinie — serwer filtruje je po user_id,
+- zmiana adresu e-mail będzie osobnym etapem, ponieważ wymaga ponownej
+  weryfikacji nowego adresu,
 - własna domena, własny nadawca i własne chińskie teksty e-maili są zapisane
   w planie na etap przed publiczną premierą.

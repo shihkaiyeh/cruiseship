@@ -28,6 +28,10 @@ function friendlyMessage(error) {
     return '電子信箱或密碼不正確。';
   }
 
+  if (details.includes('INVALID_CURRENT_PASSWORD')) {
+    return '目前的密碼不正確。';
+  }
+
   if (details.includes('EMAIL_NOT_VERIFIED')) {
     return '請先輸入電子郵件中的驗證碼。';
   }
@@ -134,6 +138,22 @@ async function signOut() {
   return data;
 }
 
+async function updateName(name) {
+  const data = await run(client => client.updateUser({ name }));
+  window.dispatchEvent(new CustomEvent('cruise-auth-changed'));
+  return data;
+}
+
+async function changePassword({ currentPassword, newPassword }) {
+  const data = await run(client => client.changePassword({
+    currentPassword,
+    newPassword,
+    revokeOtherSessions: true
+  }));
+  window.dispatchEvent(new CustomEvent('cruise-auth-changed'));
+  return data;
+}
+
 async function requestPasswordReset(email) {
   return run(client => client.emailOtp.requestPasswordReset({ email }));
 }
@@ -190,6 +210,7 @@ async function updateNavigation(root = document) {
 
 window.CruiseAuth = {
   authFetch,
+  changePassword,
   friendlyMessage,
   getSession,
   getToken,
@@ -200,6 +221,7 @@ window.CruiseAuth = {
   signIn,
   signOut,
   signUp,
+  updateName,
   updateNavigation,
   verifyEmail
 };
