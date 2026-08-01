@@ -1059,6 +1059,243 @@ h3 {
   transform: none;
 }
 
+.account-content {
+  display: grid;
+  align-items: start;
+}
+
+.account-shell {
+  width: min(820px, 100%);
+}
+
+.account-page-header {
+  margin-top: clamp(12px, 4vw, 42px);
+}
+
+.account-card {
+  min-height: 420px;
+  padding: clamp(26px, 5vw, 52px);
+  border: 1px solid var(--line);
+  border-radius: 4px 22px 22px 4px;
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.account-loading {
+  padding: 80px 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.account-loading.error {
+  color: var(--danger);
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 30px;
+  padding: 5px;
+  border-radius: 9px;
+  background: var(--ivory-100);
+}
+
+.auth-tab {
+  min-height: 46px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.auth-tab.active {
+  background: var(--paper);
+  color: var(--navy-950);
+  box-shadow: 0 3px 12px rgba(8, 27, 43, 0.08);
+}
+
+.auth-form {
+  display: grid;
+  gap: 19px;
+}
+
+.auth-form label {
+  color: var(--navy-800);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5da;
+  border-radius: 6px;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+}
+
+.auth-form input:focus {
+  border-color: var(--ocean-500);
+  box-shadow: 0 0 0 3px rgba(35, 131, 168, 0.11);
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 4px;
+  border: 0;
+}
+
+.auth-submit:disabled,
+.auth-text-button:disabled,
+.account-logout:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.auth-text-button {
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 4px 1px;
+  border: 0;
+  border-bottom: 1px solid var(--gold-500);
+  background: transparent;
+  color: var(--ocean-600);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.auth-text-button:hover {
+  color: var(--navy-900);
+}
+
+.auth-step-card h2 {
+  margin: -10px 0 -7px;
+  color: var(--navy-950);
+  font-size: clamp(25px, 3vw, 34px);
+}
+
+.auth-step-card > p:not(.auth-step-label) {
+  margin: 0;
+  color: var(--muted);
+}
+
+.auth-step-label {
+  margin: 0;
+  color: var(--ocean-600);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.otp-input {
+  font-size: 24px !important;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-align: center;
+}
+
+.auth-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 24px;
+}
+
+.auth-message {
+  min-height: 26px;
+  margin: 22px 0 0;
+  color: var(--danger);
+  font-size: 14px;
+  text-align: center;
+}
+
+.auth-message.success {
+  color: var(--success);
+}
+
+.account-profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.account-profile h2 {
+  margin: 2px 0 1px;
+  color: var(--navy-950);
+  font-size: clamp(26px, 3vw, 36px);
+}
+
+.account-avatar {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border: 1px solid rgba(199, 163, 91, 0.5);
+  border-radius: 50%;
+  background: var(--ivory-100);
+  color: var(--navy-900);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.account-email {
+  margin: 0;
+  color: var(--muted);
+}
+
+.account-logout {
+  border: 1px solid var(--line);
+  background: var(--ivory-100);
+  color: var(--navy-900);
+}
+
+.account-coming-soon {
+  grid-column: 1 / -1;
+  margin-top: 22px;
+  padding: 22px;
+  border-left: 3px solid var(--gold-500);
+  border-radius: 3px 10px 10px 3px;
+  background: var(--ivory-50);
+}
+
+.account-coming-soon p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+.auth-required {
+  padding: clamp(24px, 5vw, 44px);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold-500);
+  border-radius: 3px 14px 14px 3px;
+  background: var(--ivory-50);
+  text-align: center;
+}
+
+.auth-required h2 {
+  margin: 8px 0;
+  color: var(--navy-950);
+  font-size: clamp(24px, 3vw, 32px);
+}
+
+.auth-required > p:not(.auth-step-label) {
+  margin: 0 0 22px;
+  color: var(--muted);
+}
+
+.auth-required .add-button {
+  min-width: 220px;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1309,6 +1546,26 @@ h3 {
   .thank-you-button,
   .button-row .button {
     width: 100%;
+  }
+
+  .account-card {
+    min-height: 0;
+    padding: 24px 18px;
+    border-radius: 3px 15px 15px 3px;
+  }
+
+  .account-profile {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .account-logout {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .auth-required .add-button {
+    width: 100%;
+    min-width: 0;
   }
 }
 

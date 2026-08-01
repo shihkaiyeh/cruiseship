@@ -4,7 +4,10 @@ const lineOptions = document.getElementById('line-options');
 const shipInput = document.getElementById('ship');
 const shipOptions = document.getElementById('ship-options');
 const reviewForm = document.getElementById('reviewForm');
+const loginRequired = document.getElementById('reviewLoginRequired');
+const loginLink = document.getElementById('reviewLoginLink');
 let selectedCompany;
+let currentSession;
 
 function option(value) {
   const element = document.createElement('option');
@@ -129,7 +132,7 @@ reviewForm.addEventListener('submit', async event => {
   formMessage.textContent = '';
 
   try {
-    const response = await fetch('/add-opinion', {
+    const response = await window.CruiseAuth.authFetch('/add-opinion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newOpinion)
@@ -137,16 +140,46 @@ reviewForm.addEventListener('submit', async event => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || '目前無法送出評價');
+      const responseError = new Error(data.error || '目前無法送出評價');
+      responseError.status = response.status;
+      throw responseError;
     }
 
     window.location.href = window.CruiseRoutes.thankYouUrl(company, ship);
   } catch (error) {
-    formMessage.textContent = error.message;
+    if (error.status === 401 || error.message === 'AUTH_REQUIRED') {
+      window.location.href = loginLink.href;
+      return;
+    }
+
+    formMessage.textContent = error.message || '目前無法送出評價';
     submitButton.disabled = false;
     submitButton.textContent = '送出評價';
   }
 });
 
-populateCompanies();
-applyQuerySelection();
+async function initializeReviewForm() {
+  populateCompanies();
+  applyQuerySelection();
+  loginLink.href = `/account?returnTo=${encodeURIComponent(window.location.pathname)}`;
+
+  try {
+    currentSession = await window.CruiseAuth.getSession();
+  } catch {
+    currentSession = null;
+  }
+
+  if (!currentSession?.user) {
+    loginRequired.hidden = false;
+    reviewForm.hidden = true;
+    return;
+  }
+
+  const authorInput = document.getElementById('author');
+  authorInput.value = currentSession.user.name || '';
+  authorInput.readOnly = Boolean(currentSession.user.name);
+  loginRequired.hidden = true;
+  reviewForm.hidden = false;
+}
+
+initializeReviewForm();

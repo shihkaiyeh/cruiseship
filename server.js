@@ -7,8 +7,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+const NEON_AUTH_URL = (process.env.NEON_AUTH_URL || '').replace(/\/+$/, '');
+const NEON_AUTH_JWKS_URL = process.env.NEON_AUTH_JWKS_URL
+  || (NEON_AUTH_URL ? `${NEON_AUTH_URL}/.well-known/jwks.json` : '');
 const submissionHistory = new Map();
 const loginHistory = new Map();
+let remoteJwks;
 
 if (!process.env.DATABASE_URL) {
   console.error('Missing DATABASE_URL environment variable');
@@ -42,6 +46,8 @@ app.get('/cruise-lines/:line', sendPage('line.html'));
 app.get('/ships/:ship', sendPage('ship.html'));
 app.get('/groups/:group', sendPage('group.html'));
 
+app.get('/account', sendPage('account.html'));
+
 app.get('/add-review', sendPage('add-review.html'));
 app.get('/add-review/:line', sendPage('add-review.html'));
 app.get('/add-review/:line/:ship', sendPage('add-review.html'));
@@ -51,6 +57,12 @@ app.get('/thank-you/:line', sendPage('thank-you.html'));
 app.get('/thank-you/:line/:ship', sendPage('thank-you.html'));
 
 app.get('/admin', sendPage('admin.html'));
+
+// Publiczny adres usługi Auth jest potrzebny przeglądarce.
+// Hasła, klucze administratora i DATABASE_URL nigdy nie trafiają do tej odpowiedzi.
+app.get('/api/config', (req, res) => {
+  return res.json({ neonAuthUrl: NEON_AUTH_URL });
+});
 
 function cleanText(value, maxLength) {
   if (typeof value !== 'string') {
@@ -165,6 +177,72 @@ function requireAdmin(req, res, next) {
   }
 
   return next();
+}
+
+function getBearerToken(req) {
+  const authorization = req.get('authorization') || '';
+  const [scheme, token] = authorization.split(' ');
+
+  if (scheme?.toLowerCase() !== 'bearer' || !token) {
+    return '';
+  }
+
+  return token;
+}
+
+async function verifyUserToken(token) {
+  if (!NEON_AUTH_JWKS_URL) {
+    const error = new Error('Neon Auth is not configured');
+    error.code = 'AUTH_NOT_CONFIGURED';
+    throw error;
+  }
+
+  const { createRemoteJWKSet, jwtVerify } = await import('jose');
+
+  if (!remoteJwks) {
+    remoteJwks = createRemoteJWKSet(new URL(NEON_AUTH_JWKS_URL));
+  }
+
+  const { payload } = await jwtVerify(token, remoteJwks, {
+    clockTolerance: 10
+  });
+
+  if (typeof payload.sub !== 'string' || !payload.sub) {
+    throw new Error('Token does not identify a user');
+  }
+
+  return payload;
+}
+
+async function requireUser(req, res, next) {
+  const token = getBearerToken(req);
+
+  if (!token) {
+    return res.status(401).json({
+      error: '請先登入，才能分享你的搭乘體驗。'
+    });
+  }
+
+  try {
+    const payload = await verifyUserToken(token);
+    req.auth = {
+      userId: payload.sub,
+      email: typeof payload.email === 'string' ? payload.email : '',
+      name: typeof payload.name === 'string' ? payload.name : ''
+    };
+    return next();
+  } catch (error) {
+    if (error.code === 'AUTH_NOT_CONFIGURED') {
+      console.error('Unable to verify user: Neon Auth environment is missing');
+      return res.status(503).json({
+        error: '登入服務尚未設定完成，請稍後再試。'
+      });
+    }
+
+    return res.status(401).json({
+      error: '登入已失效，請重新登入。'
+    });
+  }
 }
 
 // LOGOWANIE ADMINISTRATORA
@@ -340,9 +418,10 @@ app.get('/api/opinions', async (req, res) => {
   }
 });
 
-// ZAPISYWANIE OPINII
-app.post('/add-opinion', async (req, res) => {
+// ZAPISYWANIE OPINII — tylko dla zalogowanych użytkowników.
+app.post('/add-opinion', requireUser, async (req, res) => {
   const ratings = req.body.ratings || {};
+  const profileName = cleanText(req.auth.name, 60);
   const newOpinion = {
     title: cleanText(req.body.title, 100),
     text: cleanText(req.body.text, 3000),
@@ -355,7 +434,7 @@ app.post('/add-opinion', async (req, res) => {
       service: Number(ratings.service),
       food: Number(ratings.food)
     },
-    author: cleanText(req.body.author, 60)
+    author: profileName || cleanText(req.body.author, 60)
   };
 
   const hasRequiredText = newOpinion.title
@@ -374,7 +453,7 @@ app.post('/add-opinion', async (req, res) => {
     });
   }
 
-  if (!canSubmit(req.ip)) {
+  if (!canSubmit(`${req.auth.userId}:${req.ip}`)) {
     return res.status(429).json({
       error: '已超過每小時可提交的評價數量，請稍後再試。'
     });
@@ -394,9 +473,10 @@ app.post('/add-opinion', async (req, res) => {
           rating_room,
           rating_service,
           rating_food,
-          status
+          status,
+          user_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', $11)
         RETURNING id, status
       `,
       [
@@ -409,7 +489,8 @@ app.post('/add-opinion', async (req, res) => {
         newOpinion.ratings.decor,
         newOpinion.ratings.room,
         newOpinion.ratings.service,
-        newOpinion.ratings.food
+        newOpinion.ratings.food,
+        req.auth.userId
       ]
     );
 
@@ -430,6 +511,14 @@ app.post('/add-opinion', async (req, res) => {
 async function startServer() {
   try {
     await pool.query('SELECT 1');
+    await pool.query(`
+      ALTER TABLE opinions
+      ADD COLUMN IF NOT EXISTS user_id TEXT
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS opinions_user_id_index
+      ON opinions (user_id)
+    `);
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
@@ -441,4 +530,8 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, pool, startServer };

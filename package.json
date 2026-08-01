@@ -1,9 +1,15 @@
 {
   "scripts": {
+    "build": "npm run build:auth",
+    "build:auth": "esbuild auth-client-source.js --bundle --platform=browser --format=iife --target=es2020 --outfile=auth-client.js --minify",
+    "postinstall": "npm run build:auth",
     "start": "node server.js"
   },
   "dependencies": {
+    "@neondatabase/neon-js": "^0.6.2-beta",
+    "esbuild": "^0.25.12",
     "express": "^5.2.1",
+    "jose": "^6.1.2",
     "pg": "^8.22.0"
   }
 }

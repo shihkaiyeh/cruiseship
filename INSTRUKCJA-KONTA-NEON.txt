@@ -1,0 +1,51 @@
+KONTA UŻYTKOWNIKÓW — WDROŻENIE ETAPU 1
+=======================================
+
+Co zawiera ta paczka:
+- rejestrację przez e-mail, hasło i nazwę użytkownika,
+- potwierdzenie rejestracji 6-cyfrowym kodem,
+- logowanie i wylogowanie,
+- odzyskiwanie hasła kodem,
+- stronę /account (我的帳號),
+- dodawanie opinii tylko przez zalogowanych użytkowników,
+- zapis user_id przy każdej nowej opinii.
+
+1. RENDER — DODAJ JEDNĄ ZMIENNĄ
+--------------------------------
+Otwórz:
+Render -> cruiseship -> Environment -> Edit
+
+Dodaj:
+KEY:   NEON_AUTH_URL
+VALUE: skopiuj dokładnie pole „Auth URL” z:
+       Neon -> Auth -> Configuration -> Project Info
+
+To jest publiczny adres usługi logowania, a nie hasło.
+Nie wklejaj do GitHuba DATABASE_URL, ADMIN_PASSWORD ani ADMIN_SECRET.
+
+Kliknij „Save, rebuild, and deploy”.
+
+2. PLIKI I GITHUB
+------------------
+1) Zastąp pliki w lokalnym folderze projektu plikami z tej paczki.
+2) W VS Code wykonaj commit, np.:
+   Add user accounts with Neon Auth
+3) Kliknij Sync Changes.
+4) Render powinien automatycznie rozpocząć nowe wdrożenie.
+
+3. TEST PO WDROŻENIU
+--------------------
+1) Otwórz https://cruiseship.onrender.com/account
+2) Utwórz konto testowe.
+3) Odbierz kod z wiadomości wysłanej przez auth@mail.myneon.app.
+4) Wpisz kod i zaloguj się.
+5) Otwórz /add-review i wyślij testową opinię.
+6) Sprawdź opinię w dotychczasowym panelu /admin.
+7) Wyloguj się i sprawdź, czy /add-review prosi o ponowne zalogowanie.
+
+Ważne:
+- stare opinie pozostają bez zmian,
+- czytanie opinii nadal jest publiczne,
+- nowe opinie nadal czekają na zatwierdzenie moderatora,
+- własna domena, własny nadawca i własne chińskie teksty e-maili są zapisane
+  w planie na etap przed publiczną premierą.

@@ -22,7 +22,14 @@
         <h1>新增評價</h1>
         <p class="form-lead">所有評價送出後會先經過管理員審核，再顯示於網站上。</p>
 
-        <form id="reviewForm">
+        <div id="reviewLoginRequired" class="auth-required" hidden>
+          <p class="auth-step-label">需要登入</p>
+          <h2>請先登入，才能分享你的搭乘體驗。</h2>
+          <p>登入後會自動回到這個頁面。</p>
+          <a id="reviewLoginLink" class="add-button" href="/account">登入／建立帳號</a>
+        </div>
+
+        <form id="reviewForm" hidden>
           <div class="form-grid">
             <div class="field field-full">
               <label for="title">評價標題</label>
@@ -117,6 +124,7 @@
   </main>
 
   <script src="/catalog-data.js"></script>
+  <script src="/auth-client.js"></script>
   <script src="/site.js"></script>
   <script src="/add-review.js"></script>
 </body>

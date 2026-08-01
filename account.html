@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="登入或建立蜜拉士愷郵輪評價站帳號。">
+  <title>我的帳號｜蜜拉士愷郵輪評價站</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="menu"></div>
+
+  <main class="content account-content">
+    <div class="page-shell account-shell">
+      <header class="form-page-header account-page-header">
+        <p class="eyebrow">Your cruise account</p>
+        <h1 class="page-title">我的帳號</h1>
+        <p class="page-intro">登入後就能分享搭乘體驗，並在之後查看自己的評價。</p>
+      </header>
+
+      <section class="account-card" aria-live="polite">
+        <div id="accountLoading" class="account-loading">正在確認登入狀態…</div>
+
+        <div id="guestAccount" hidden>
+          <div class="auth-tabs" role="tablist" aria-label="帳號選項">
+            <button type="button" class="auth-tab active" data-auth-panel="login" role="tab">登入</button>
+            <button type="button" class="auth-tab" data-auth-panel="signup" role="tab">建立帳號</button>
+          </div>
+
+          <form id="loginForm" class="auth-form" data-auth-form="login">
+            <div class="field">
+              <label for="loginEmail">電子信箱</label>
+              <input id="loginEmail" type="email" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label for="loginPassword">密碼</label>
+              <input id="loginPassword" type="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="add-button auth-submit">登入</button>
+            <button type="button" class="auth-text-button" data-show-panel="forgot">忘記密碼？</button>
+          </form>
+
+          <form id="signupForm" class="auth-form" data-auth-form="signup" hidden>
+            <div class="field">
+              <label for="signupName">顯示名稱</label>
+              <input id="signupName" type="text" minlength="2" maxlength="30" autocomplete="nickname" required>
+              <small class="field-help">這個名稱會顯示在你的評價旁邊。</small>
+            </div>
+            <div class="field">
+              <label for="signupEmail">電子信箱</label>
+              <input id="signupEmail" type="email" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label for="signupPassword">密碼</label>
+              <input id="signupPassword" type="password" minlength="8" autocomplete="new-password" required>
+              <small class="field-help">至少 8 個字元。</small>
+            </div>
+            <div class="field">
+              <label for="signupPasswordConfirm">再次輸入密碼</label>
+              <input id="signupPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required>
+            </div>
+            <button type="submit" class="add-button auth-submit">建立帳號</button>
+          </form>
+
+          <form id="verifyForm" class="auth-form auth-step-card" data-auth-form="verify" hidden>
+            <p class="auth-step-label">確認電子信箱</p>
+            <h2>輸入 6 位數驗證碼</h2>
+            <p>我們已將驗證碼寄到 <strong id="verificationEmail"></strong>。</p>
+            <div class="field">
+              <label for="verificationCode">驗證碼</label>
+              <input
+                id="verificationCode"
+                class="otp-input"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                pattern="[0-9]{6}"
+                required
+              >
+            </div>
+            <button type="submit" class="add-button auth-submit">確認驗證碼</button>
+            <div class="auth-secondary-actions">
+              <button type="button" class="auth-text-button" id="resendCode">重新寄送驗證碼</button>
+              <button type="button" class="auth-text-button" data-show-panel="login">返回登入</button>
+            </div>
+          </form>
+
+          <form id="forgotForm" class="auth-form auth-step-card" data-auth-form="forgot" hidden>
+            <p class="auth-step-label">重設密碼</p>
+            <h2>取得重設密碼驗證碼</h2>
+            <p>輸入註冊時使用的電子信箱，我們會寄送驗證碼給你。</p>
+            <div class="field">
+              <label for="forgotEmail">電子信箱</label>
+              <input id="forgotEmail" type="email" autocomplete="email" required>
+            </div>
+            <button type="submit" class="add-button auth-submit">寄送驗證碼</button>
+            <button type="button" class="auth-text-button" data-show-panel="login">返回登入</button>
+          </form>
+
+          <form id="resetForm" class="auth-form auth-step-card" data-auth-form="reset" hidden>
+            <p class="auth-step-label">設定新密碼</p>
+            <h2>輸入驗證碼與新密碼</h2>
+            <p>驗證碼已寄到 <strong id="resetEmailLabel"></strong>。</p>
+            <div class="field">
+              <label for="resetCode">驗證碼</label>
+              <input id="resetCode" class="otp-input" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required>
+            </div>
+            <div class="field">
+              <label for="resetPassword">新密碼</label>
+              <input id="resetPassword" type="password" minlength="8" autocomplete="new-password" required>
+            </div>
+            <div class="field">
+              <label for="resetPasswordConfirm">再次輸入新密碼</label>
+              <input id="resetPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required>
+            </div>
+            <button type="submit" class="add-button auth-submit">更新密碼</button>
+          </form>
+        </div>
+
+        <div id="loggedInAccount" class="account-profile" hidden>
+          <div class="account-avatar" aria-hidden="true" id="accountInitial">航</div>
+          <div>
+            <p class="auth-step-label">已登入</p>
+            <h2 id="accountName"></h2>
+            <p id="accountEmail" class="account-email"></p>
+          </div>
+          <button type="button" id="logoutButton" class="button account-logout">登出</button>
+          <div class="account-coming-soon">
+            <strong>你的評價</strong>
+            <p>下一個階段會在這裡顯示你的評價與審核狀態。</p>
+          </div>
+        </div>
+
+        <p id="authMessage" class="auth-message" role="status"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="/catalog-data.js"></script>
+  <script src="/auth-client.js"></script>
+  <script src="/site.js"></script>
+  <script src="/account.js"></script>
+</body>
+</html>
