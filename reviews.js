@@ -41,9 +41,13 @@ function createReviewCard(opinion) {
 
   const author = document.createElement('div');
   author.className = 'review-author';
-  author.appendChild(
-    createTextElement('span', 'review-author-name', `分享者：${opinion.author || ''}`)
+  const authorIdentity = document.createElement('span');
+  authorIdentity.className = 'review-author-identity';
+  authorIdentity.append(
+    createTextElement('span', 'review-author-label', '分享者：'),
+    createTextElement('span', 'review-author-name', opinion.author || '')
   );
+  author.appendChild(authorIdentity);
 
   const userBadge = createUserBadge(opinion.badge, opinion.approvedReviewCount);
   if (userBadge) {
@@ -66,8 +70,22 @@ function createReviewCard(opinion) {
 
   const header = document.createElement('div');
   header.className = 'review-header';
-  header.appendChild(createTextElement('span', '', `郵輪: ${opinion.ship || ''}`));
-  header.appendChild(createTextElement('span', '', `搭船日期: ${opinion.date || ''}`));
+
+  const shipMeta = document.createElement('span');
+  shipMeta.className = 'review-meta-item';
+  shipMeta.append(
+    createTextElement('span', 'review-meta-label', '郵輪：'),
+    createTextElement('span', 'review-ship-name', opinion.ship || '')
+  );
+
+  const dateMeta = document.createElement('span');
+  dateMeta.className = 'review-meta-item';
+  dateMeta.append(
+    createTextElement('span', 'review-meta-label', '搭船日期：'),
+    createTextElement('span', 'review-date-value', opinion.date || '')
+  );
+
+  header.append(shipMeta, dateMeta);
   review.appendChild(header);
 
   const ratings = document.createElement('div');

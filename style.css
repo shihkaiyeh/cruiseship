@@ -886,6 +886,21 @@ h3 {
   font-size: 14px;
 }
 
+.review-meta-item {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.review-meta-label,
+.review-date-value {
+  color: var(--muted);
+}
+
+.review-ship-name {
+  color: var(--navy-800);
+  font-weight: 600;
+}
+
 .review-ratings {
   display: grid;
   grid-template-columns: repeat(2, minmax(180px, 1fr));
@@ -952,6 +967,15 @@ h3 {
   margin: 8px 0 16px;
   color: var(--muted);
   font-size: 14px;
+}
+
+.review-author-identity {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.review-author-label {
+  color: var(--muted);
 }
 
 .review-author-name {
