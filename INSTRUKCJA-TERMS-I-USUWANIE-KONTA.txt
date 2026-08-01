@@ -1,4 +1,4 @@
-ETAP 3 — ZASADY I USUWANIE KONTA
+ETAP 3 — ZASADY I DZIAŁAJĄCE USUWANIE KONTA
 
 Co zostało dodane:
 
@@ -15,6 +15,10 @@ Co zostało dodane:
 
 4. Usunięcie jest trwałe: kasuje konto i wszystkie opinie tego konta.
 
+5. Na stronie głównej, w prawym górnym rogu zdjęcia, jest mały przycisk:
+   - „登入／免費註冊”, gdy użytkownik nie jest zalogowany,
+   - „我的帳號”, gdy użytkownik jest zalogowany.
+
 
 CO MASZ ZROBIĆ
 
@@ -23,7 +27,31 @@ CO MASZ ZROBIĆ
 3. Poczekaj, aż Render zakończy wdrożenie.
 
 Nie dodajesz żadnego SQL w Neon.
-Nie dodajesz żadnej nowej zmiennej w Render.
+
+
+JEDNORAZOWA KONFIGURACJA USUWANIA KONTA
+
+Po wdrożeniu plików dodaj w Render -> Environment trzy zmienne:
+
+1. NEON_API_KEY
+   Klucz API utworzony w ustawieniach konta Neon.
+
+2. NEON_PROJECT_ID
+   Identyfikator projektu „cruiseship”.
+
+3. NEON_BRANCH_ID
+   Identyfikator gałęzi „production”; zaczyna się od „br-”.
+
+Po dodaniu wybierz „Save, rebuild, and deploy”.
+
+WAŻNE:
+- klucza NEON_API_KEY nie wklejaj do plików, GitHuba ani rozmowy;
+- przechowuj go wyłącznie jako ukrytą zmienną w Render;
+- serwer pobiera identyfikator kasowanego konta z bezpiecznie sprawdzonego
+  tokenu zalogowanego użytkownika. Formularz nie może wskazać cudzego konta.
+
+Jeżeli nie wiesz, gdzie znaleźć te trzy wartości, zatrzymaj się po wdrożeniu
+plików. Przejdziemy przez ekrany Neon i Render krok po kroku.
 
 
 JAK BEZPIECZNIE SPRAWDZIĆ

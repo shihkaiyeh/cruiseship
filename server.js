@@ -11,6 +11,9 @@ const TERMS_VERSION = '2026-08-01';
 const NEON_AUTH_URL = (process.env.NEON_AUTH_URL || '').replace(/\/+$/, '');
 const NEON_AUTH_JWKS_URL = process.env.NEON_AUTH_JWKS_URL
   || (NEON_AUTH_URL ? `${NEON_AUTH_URL}/.well-known/jwks.json` : '');
+const NEON_API_KEY = process.env.NEON_API_KEY || '';
+const NEON_PROJECT_ID = process.env.NEON_PROJECT_ID || '';
+const NEON_BRANCH_ID = process.env.NEON_BRANCH_ID || '';
 const submissionHistory = new Map();
 const loginHistory = new Map();
 let remoteJwks;
@@ -590,10 +593,19 @@ app.post('/api/me/terms-acceptance', requireUser, async (req, res) => {
   }
 });
 
-// USUNIĘCIE DANYCH APLIKACJI po usunięciu konta z Neon Auth.
-// Endpoint jest idempotentny: ponowne wywołanie nie powoduje błędu.
-app.delete('/api/me/data', requireUser, async (req, res) => {
+// TRWAŁE USUNIĘCIE KONTA.
+// Identyfikator użytkownika pochodzi wyłącznie ze sprawdzonego JWT, nigdy z body.
+// Klucz administracyjny Neon jest przechowywany tylko w Render Environment.
+app.delete('/api/me/account', requireUser, async (req, res) => {
+  if (!NEON_API_KEY || !NEON_PROJECT_ID || !NEON_BRANCH_ID) {
+    console.error('Account deletion is not configured: missing Neon API environment variables');
+    return res.status(503).json({
+      error: '帳號刪除功能尚未設定完成，請稍後再試。'
+    });
+  }
+
   const client = await pool.connect();
+  let authUserDeleted = false;
 
   try {
     await client.query('BEGIN');
@@ -605,6 +617,36 @@ app.delete('/api/me/data', requireUser, async (req, res) => {
       'DELETE FROM user_profiles WHERE user_id = $1',
       [req.auth.userId]
     );
+
+    const deleteUrl = [
+      'https://console.neon.tech/api/v2/projects',
+      encodeURIComponent(NEON_PROJECT_ID),
+      'branches',
+      encodeURIComponent(NEON_BRANCH_ID),
+      'auth/users',
+      encodeURIComponent(req.auth.userId)
+    ].join('/');
+
+    const deleteResponse = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${NEON_API_KEY}`
+      },
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!deleteResponse.ok) {
+      const responseText = await deleteResponse.text().catch(() => '');
+      console.error(
+        'Neon API could not delete auth user:',
+        deleteResponse.status,
+        responseText.slice(0, 500)
+      );
+      throw new Error(`NEON_ACCOUNT_DELETE_FAILED_${deleteResponse.status}`);
+    }
+
+    authUserDeleted = true;
     await client.query('COMMIT');
 
     return res.json({
@@ -613,9 +655,19 @@ app.delete('/api/me/data', requireUser, async (req, res) => {
     });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
+
+    // Jeśli Neon usunął konto, ale zatwierdzenie transakcji nie powiodło się,
+    // ponawiamy samo czyszczenie danych aplikacji bez wymagania tokenu użytkownika.
+    if (authUserDeleted) {
+      await pool.query('DELETE FROM opinions WHERE user_id = $1', [req.auth.userId])
+        .catch(cleanupError => console.error('Unable to finish opinion cleanup:', cleanupError));
+      await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [req.auth.userId])
+        .catch(cleanupError => console.error('Unable to finish profile cleanup:', cleanupError));
+    }
+
     console.error('Unable to delete user data:', error);
     return res.status(500).json({
-      error: '暫時無法刪除帳號資料，請稍後再試。'
+      error: '目前無法刪除帳號，請稍後再試。'
     });
   } finally {
     client.release();

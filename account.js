@@ -11,7 +11,6 @@
   const reviewsEmpty = document.getElementById('accountReviewsEmpty');
   const termsVersion = '2026-08-01';
   const pendingTermsKey = 'cruisePendingTermsAcceptance';
-  const pendingCleanupKey = 'cruisePendingAccountCleanupToken';
   const accountDeleted = new URLSearchParams(window.location.search).get('deleted') === '1';
   const returnPath = auth.safeReturnPath(
     new URLSearchParams(window.location.search).get('returnTo'),
@@ -211,34 +210,6 @@
       localStorage.removeItem(pendingTermsKey);
     } catch (error) {
       console.error('Unable to save terms acceptance:', error);
-    }
-  }
-
-  async function cleanupAccountData(token) {
-    const response = await fetch('/api/me/data', {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-      keepalive: true
-    });
-
-    if (!response.ok) {
-      throw new Error('ACCOUNT_DATA_CLEANUP_FAILED');
-    }
-
-    sessionStorage.removeItem(pendingCleanupKey);
-  }
-
-  async function retryPendingAccountCleanup() {
-    const token = sessionStorage.getItem(pendingCleanupKey);
-
-    if (!token) {
-      return;
-    }
-
-    try {
-      await cleanupAccountData(token);
-    } catch (error) {
-      console.error('Unable to finish account data cleanup:', error);
     }
   }
 
@@ -515,26 +486,14 @@
     setMessage('');
 
     try {
-      const result = await auth.deleteAccount(password);
-
-      if (result.data?.message === 'Verification email sent') {
-        sessionStorage.removeItem(pendingCleanupKey);
-        setMessage('請查看電子郵件並完成帳號刪除。', 'success');
-        return;
-      }
-
-      sessionStorage.setItem(pendingCleanupKey, result.token);
-
-      try {
-        await cleanupAccountData(result.token);
-      } catch (error) {
-        console.error('Account deleted, cleanup will be retried:', error);
-      }
-
+      await auth.deleteAccount(password);
       window.location.href = '/account?deleted=1';
     } catch (error) {
-      sessionStorage.removeItem(pendingCleanupKey);
-      setMessage(auth.friendlyMessage(error));
+      console.error('Unable to delete account:', error);
+      const text = error.message && /[\u3400-\u9FFF]/u.test(error.message)
+        ? error.message
+        : auth.friendlyMessage(error);
+      setMessage(text);
     } finally {
       setFormBusy(form, false);
       deleteAccountCancel.disabled = false;
@@ -560,7 +519,6 @@
 
   async function initialize() {
     try {
-      await retryPendingAccountCleanup();
       const session = await auth.getSession();
 
       if (session?.user) {

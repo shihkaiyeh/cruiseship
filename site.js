@@ -176,6 +176,10 @@
       buildCatalogMenu(catalogContainer);
       markActiveLink(host);
 
+      if (window.CruiseAuth) {
+        await window.CruiseAuth.updateNavigation(document);
+      }
+
       host.querySelectorAll('a[href]').forEach(link => {
         link.addEventListener('click', closeMenu);
       });
@@ -184,9 +188,21 @@
     }
   }
 
+  async function initAuthNavigation() {
+    if (window.CruiseAuth) {
+      await window.CruiseAuth.updateNavigation(document);
+    }
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMenu);
+    document.addEventListener('DOMContentLoaded', () => {
+      initMenu();
+      initAuthNavigation();
+    });
   } else {
     initMenu();
+    initAuthNavigation();
   }
+
+  window.addEventListener('cruise-auth-changed', initAuthNavigation);
 })();

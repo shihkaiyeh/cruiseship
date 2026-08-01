@@ -407,6 +407,32 @@ h3 {
   content: "";
 }
 
+.hero-account-link {
+  position: absolute;
+  z-index: 2;
+  top: 24px;
+  right: 24px;
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(8, 27, 43, 0.62);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.hero-account-link:hover {
+  border-color: var(--gold-300);
+  background: rgba(8, 27, 43, 0.86);
+}
+
 .hero-copy {
   position: relative;
   z-index: 1;
@@ -1818,6 +1844,14 @@ h3 {
   .home-hero {
     min-height: 610px;
     border-radius: 3px 3px 18px 3px;
+  }
+
+  .hero-account-link {
+    top: 14px;
+    right: 14px;
+    min-height: 38px;
+    padding: 7px 12px;
+    font-size: 13px;
   }
 
   .hero-copy {

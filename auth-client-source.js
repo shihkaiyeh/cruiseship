@@ -159,6 +159,17 @@ async function changePassword({ currentPassword, newPassword }) {
 }
 
 async function deleteAccount(password) {
+  const session = await getSession();
+  const email = session?.user?.email || '';
+
+  if (!email) {
+    const error = new Error('AUTH_REQUIRED');
+    error.status = 401;
+    throw error;
+  }
+
+  // Ponowne logowanie potwierdza bieżące hasło przed nieodwracalną operacją.
+  await run(client => client.signIn.email({ email, password }));
   const token = await getToken();
 
   if (!token) {
@@ -167,9 +178,21 @@ async function deleteAccount(password) {
     throw error;
   }
 
-  const data = await run(client => client.deleteUser({ password }));
+  const response = await fetch('/api/me/account', {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(data.error || 'ACCOUNT_DELETE_FAILED');
+    error.status = response.status;
+    throw error;
+  }
+
+  await run(client => client.signOut()).catch(() => {});
   window.dispatchEvent(new CustomEvent('cruise-auth-changed'));
-  return { data, token };
+  return data;
 }
 
 async function requestPasswordReset(email) {
