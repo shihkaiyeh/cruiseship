@@ -96,8 +96,11 @@ async function getSession() {
 }
 
 async function getToken() {
-  const data = await run(client => client.token());
-  return data?.token || '';
+  // Neon Auth dołącza JWT do obiektu bieżącej sesji.
+  // Pobieranie go z osobnego endpointu /token może zwrócić pustą wartość,
+  // mimo że użytkownik pozostaje poprawnie zalogowany.
+  const session = await getSession();
+  return session?.session?.token || '';
 }
 
 async function signUp({ name, email, password }) {
