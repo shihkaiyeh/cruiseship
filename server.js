@@ -77,6 +77,38 @@ function cleanText(value, maxLength) {
   return value.trim().slice(0, maxLength);
 }
 
+// Odznaki są wyliczane wyłącznie z liczby zatwierdzonych opinii.
+// Nie zapisujemy poziomu w bazie, dzięki czemu awans następuje automatycznie.
+function reviewBadgeForCount(value) {
+  const count = Number(value) || 0;
+
+  if (count >= 16) {
+    return { key: 'cruise-expert', label: '郵輪專家' };
+  }
+
+  if (count >= 11) {
+    return { key: 'veteran-navigator', label: '資深航海家' };
+  }
+
+  if (count >= 7) {
+    return { key: 'cruise-master', label: '郵輪達人' };
+  }
+
+  if (count >= 4) {
+    return { key: 'sea-traveler', label: '航海旅人' };
+  }
+
+  if (count >= 2) {
+    return { key: 'advanced-sailor', label: '進階水手' };
+  }
+
+  if (count >= 1) {
+    return { key: 'new-sailor', label: '新人水手' };
+  }
+
+  return null;
+}
+
 function isRating(value) {
   return Number.isInteger(value) && value >= 1 && value <= 5;
 }
@@ -420,6 +452,10 @@ app.get('/api/opinions', async (req, res) => {
         opinions.rating_room,
         opinions.rating_service,
         opinions.rating_food,
+        CASE
+          WHEN opinions.user_id IS NULL THEN 0
+          ELSE COUNT(*) OVER (PARTITION BY opinions.user_id)
+        END AS approved_review_count,
         opinions.created_at
       FROM opinions
       LEFT JOIN user_profiles
@@ -428,22 +464,28 @@ app.get('/api/opinions', async (req, res) => {
       ORDER BY opinions.created_at DESC, opinions.id DESC
     `);
 
-    const opinions = result.rows.map(row => ({
-      id: row.id,
-      line: row.line,
-      ship: row.ship,
-      date: row.date,
-      author: row.author,
-      title: row.title,
-      text: row.text,
-      ratings: {
-        decor: row.rating_decor,
-        room: row.rating_room,
-        service: row.rating_service,
-        food: row.rating_food
-      },
-      createdAt: row.created_at
-    }));
+    const opinions = result.rows.map(row => {
+      const approvedReviewCount = Number(row.approved_review_count) || 0;
+
+      return {
+        id: row.id,
+        line: row.line,
+        ship: row.ship,
+        date: row.date,
+        author: row.author,
+        title: row.title,
+        text: row.text,
+        ratings: {
+          decor: row.rating_decor,
+          room: row.rating_room,
+          service: row.rating_service,
+          food: row.rating_food
+        },
+        approvedReviewCount,
+        badge: reviewBadgeForCount(approvedReviewCount),
+        createdAt: row.created_at
+      };
+    });
 
     return res.json(opinions);
   } catch (error) {
@@ -459,27 +501,37 @@ app.get('/api/me/opinions', requireUser, async (req, res) => {
   try {
     await syncUserProfile(req.auth);
 
-    const result = await pool.query(
-      `
-        SELECT
-          id,
-          line,
-          ship,
-          TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
-          title,
-          review_text AS text,
-          rating_decor,
-          rating_room,
-          rating_service,
-          rating_food,
-          status,
-          created_at
-        FROM opinions
-        WHERE user_id = $1
-        ORDER BY created_at DESC, id DESC
-      `,
-      [req.auth.userId]
-    );
+    const [result, statsResult] = await Promise.all([
+      pool.query(
+        `
+          SELECT
+            id,
+            line,
+            ship,
+            TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
+            title,
+            review_text AS text,
+            rating_decor,
+            rating_room,
+            rating_service,
+            rating_food,
+            status,
+            created_at
+          FROM opinions
+          WHERE user_id = $1
+          ORDER BY created_at DESC, id DESC
+        `,
+        [req.auth.userId]
+      ),
+      pool.query(
+        `
+          SELECT COUNT(*)::INTEGER AS approved_review_count
+          FROM opinions
+          WHERE user_id = $1 AND status = 'approved'
+        `,
+        [req.auth.userId]
+      )
+    ]);
 
     const opinions = result.rows.map(row => ({
       id: row.id,
@@ -498,7 +550,15 @@ app.get('/api/me/opinions', requireUser, async (req, res) => {
       createdAt: row.created_at
     }));
 
-    return res.json(opinions);
+    const approvedReviewCount = Number(
+      statsResult.rows[0]?.approved_review_count
+    ) || 0;
+
+    return res.json({
+      opinions,
+      approvedReviewCount,
+      badge: reviewBadgeForCount(approvedReviewCount)
+    });
   } catch (error) {
     console.error('Unable to load user opinions:', error);
     return res.status(500).json({
@@ -813,4 +873,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { app, pool, startServer };
+module.exports = { app, pool, reviewBadgeForCount, startServer };

@@ -138,8 +138,12 @@
             <div class="account-avatar" aria-hidden="true" id="accountInitial">航</div>
             <div>
               <p class="auth-step-label">已登入</p>
-              <h2 id="accountName"></h2>
+              <div class="account-name-row">
+                <h2 id="accountName"></h2>
+                <span id="accountBadge" class="user-badge" hidden></span>
+              </div>
               <p id="accountEmail" class="account-email"></p>
+              <p id="accountBadgeProgress" class="account-badge-progress" hidden></p>
             </div>
             <button type="button" id="logoutButton" class="button account-logout">登出</button>
           </header>

@@ -17,6 +17,22 @@ function createRating(label, value) {
   );
 }
 
+function createUserBadge(badge, approvedReviewCount) {
+  if (!badge?.key || !badge?.label) {
+    return null;
+  }
+
+  const element = createTextElement(
+    'span',
+    `user-badge user-badge-${badge.key}`,
+    badge.label
+  );
+  const count = Number(approvedReviewCount) || 0;
+  element.title = `已通過 ${count} 則評價`;
+  element.setAttribute('aria-label', `${badge.label}，已通過 ${count} 則評價`);
+  return element;
+}
+
 function createReviewCard(opinion) {
   const review = document.createElement('article');
   review.className = 'review';
@@ -61,7 +77,18 @@ function createReviewCard(opinion) {
     review.appendChild(toggleTextButton);
   }
 
-  review.appendChild(createTextElement('div', 'review-author', `分享者：${opinion.author || ''}`));
+  const author = document.createElement('div');
+  author.className = 'review-author';
+  author.appendChild(
+    createTextElement('span', 'review-author-name', `分享者：${opinion.author || ''}`)
+  );
+
+  const userBadge = createUserBadge(opinion.badge, opinion.approvedReviewCount);
+  if (userBadge) {
+    author.appendChild(userBadge);
+  }
+
+  review.appendChild(author);
 
   return review;
 }

@@ -10,6 +10,8 @@
   const reviewsLoading = document.getElementById('accountReviewsLoading');
   const reviewsList = document.getElementById('accountReviewsList');
   const reviewsEmpty = document.getElementById('accountReviewsEmpty');
+  const accountBadge = document.getElementById('accountBadge');
+  const accountBadgeProgress = document.getElementById('accountBadgeProgress');
   const termsVersion = '2026-08-01';
   const pendingTermsKey = 'cruisePendingTermsAcceptance';
   const accountDeleted = new URLSearchParams(window.location.search).get('deleted') === '1';
@@ -100,6 +102,7 @@
     document.getElementById('accountEmail').textContent = user.email || '';
     document.getElementById('accountInitial').textContent = displayName.trim().charAt(0) || '航';
     document.getElementById('profileNameInput').value = displayName;
+    setAccountBadge(null, 0);
     setMessage('');
   }
 
@@ -117,6 +120,25 @@
     element.className = className;
     element.textContent = text;
     return element;
+  }
+
+  function setAccountBadge(badge, approvedReviewCount) {
+    const count = Number(approvedReviewCount) || 0;
+
+    accountBadge.className = 'user-badge';
+    accountBadge.textContent = '';
+    accountBadge.hidden = !badge?.key || !badge?.label;
+
+    if (badge?.key && badge?.label) {
+      accountBadge.classList.add(`user-badge-${badge.key}`);
+      accountBadge.textContent = badge.label;
+      accountBadge.title = `已通過 ${count} 則評價`;
+    }
+
+    accountBadgeProgress.textContent = count > 0
+      ? `已通過 ${count} 則評價`
+      : '通過第一則評價後就會獲得第一枚徽章。';
+    accountBadgeProgress.hidden = false;
   }
 
   function averageRating(ratings = {}) {
@@ -202,7 +224,11 @@
         throw new Error(data.error || 'REVIEWS_UNAVAILABLE');
       }
 
-      const opinions = Array.isArray(data) ? data : [];
+      const opinions = Array.isArray(data) ? data : (data.opinions || []);
+      setAccountBadge(
+        Array.isArray(data) ? null : data.badge,
+        Array.isArray(data) ? 0 : data.approvedReviewCount
+      );
       reviewsList.replaceChildren(...opinions.map(renderOpinion));
       reviewsLoading.hidden = true;
       reviewsList.hidden = opinions.length === 0;
