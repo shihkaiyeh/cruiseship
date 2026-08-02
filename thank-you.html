@@ -13,13 +13,13 @@
     <section class="thank-you-card">
       <div class="success-icon" aria-hidden="true">✓</div>
       <p class="eyebrow">Review received</p>
-      <h1>謝謝你的分享！</h1>
-      <p class="thank-you-lead">你的評價已成功送出。</p>
+      <h1 id="thankYouTitle">謝謝你的分享！</h1>
+      <p class="thank-you-lead" id="thankYouLead">你的評價已成功送出。</p>
       <p>
         為了確保內容品質並避免垃圾訊息，評價會先由管理員審核。
         審核通過後，就會顯示在對應的郵輪頁面。
       </p>
-      <p class="thank-you-note">你不需要再次送出，我們已經收到這則評價。</p>
+      <p class="thank-you-note" id="thankYouNote">你不需要再次送出，我們已經收到這則評價。</p>
 
       <div class="thank-you-actions">
         <a href="/" class="thank-you-button secondary">回到首頁</a>
@@ -38,6 +38,14 @@
     const company = window.CRUISE_CATALOG.getCompany(lineId);
     const ship = window.CRUISE_CATALOG.getShip(shipSlug);
     const reviewsLink = document.getElementById('reviewsLink');
+    const wasUpdated = new URLSearchParams(window.location.search).get('updated') === '1';
+
+    if (wasUpdated) {
+      document.title = '評價已更新｜蜜拉士愷郵輪評價站';
+      document.getElementById('thankYouTitle').textContent = '評價已更新！';
+      document.getElementById('thankYouLead').textContent = '你的修改已成功送出。';
+      document.getElementById('thankYouNote').textContent = '評價正在重新等待審核，你不需要再次送出。';
+    }
 
     if (ship?.featured) {
       reviewsLink.href = window.CruiseRoutes.shipUrl(ship);

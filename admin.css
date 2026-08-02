@@ -248,6 +248,11 @@ h2 {
   color: var(--danger);
 }
 
+.status-deleted {
+  background: #e8ebed;
+  color: #59656d;
+}
+
 .opinion-meta,
 .opinion-author {
   color: var(--muted);
@@ -299,6 +304,20 @@ h2 {
 .delete-button {
   background: var(--danger);
   color: #fff;
+}
+
+.restore-button {
+  background: var(--ocean);
+  color: #fff;
+}
+
+.deleted-note {
+  margin: 18px 0 0;
+  padding: 11px 14px;
+  border-left: 3px solid #87939a;
+  background: #f2f4f5;
+  color: #59656d;
+  font-size: 14px;
 }
 
 .empty-state {

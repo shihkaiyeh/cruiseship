@@ -8,6 +8,7 @@
   const tabs = [...document.querySelectorAll('[data-auth-panel]')];
   const forms = [...document.querySelectorAll('[data-auth-form]')];
   const reviewsLoading = document.getElementById('accountReviewsLoading');
+  const reviewsMessage = document.getElementById('accountReviewsMessage');
   const reviewsList = document.getElementById('accountReviewsList');
   const reviewsEmpty = document.getElementById('accountReviewsEmpty');
   const accountBadge = document.getElementById('accountBadge');
@@ -186,6 +187,49 @@
     return company ? window.CruiseRoutes.lineUrl(company) : '/';
   }
 
+  function showReviewsMessage(text = '', type = 'success') {
+    reviewsMessage.textContent = text;
+    reviewsMessage.classList.toggle('error', type === 'error');
+    reviewsMessage.hidden = !text;
+  }
+
+  async function deleteOpinion(opinion, button) {
+    const title = opinion.title || '未命名評價';
+    const confirmed = window.confirm(
+      `確定要刪除「${title}」嗎？\n刪除後將不再顯示；如需還原，請聯絡管理員。`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = '刪除中…';
+    showReviewsMessage('');
+
+    try {
+      const response = await auth.authFetch(`/api/me/opinions/${opinion.id}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || '暫時無法刪除評價，請稍後再試。');
+      }
+
+      await loadMyOpinions();
+      showReviewsMessage('評價已刪除。');
+    } catch (error) {
+      console.error('Unable to delete opinion:', error);
+      showReviewsMessage(
+        error.message || '暫時無法刪除評價，請稍後再試。',
+        'error'
+      );
+      button.disabled = false;
+      button.textContent = '刪除評價';
+    }
+  }
+
   function renderOpinion(opinion) {
     const statusKey = statusLabels[opinion.status] ? opinion.status : 'pending';
     const status = statusLabels[statusKey];
@@ -218,6 +262,20 @@
       link.href = reviewPublicUrl(opinion);
       footer.appendChild(link);
     }
+
+    const actions = createElement('div', 'account-review-actions');
+    const editLink = createElement('a', 'account-review-action account-review-edit', '編輯評價');
+    editLink.href = `/edit-review/${encodeURIComponent(opinion.id)}`;
+
+    const deleteButton = createElement(
+      'button',
+      'account-review-action account-review-delete',
+      '刪除評價'
+    );
+    deleteButton.type = 'button';
+    deleteButton.addEventListener('click', () => deleteOpinion(opinion, deleteButton));
+    actions.append(editLink, deleteButton);
+    footer.appendChild(actions);
 
     card.append(heading, meta, excerpt, footer);
     return card;

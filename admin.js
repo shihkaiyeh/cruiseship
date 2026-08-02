@@ -13,7 +13,8 @@ let currentFilter = 'pending';
 const statusLabels = {
   pending: '待審核',
   approved: '已通過',
-  rejected: '已拒絕'
+  rejected: '已拒絕',
+  deleted: '已刪除'
 };
 
 function textElement(tagName, className, text) {
@@ -66,9 +67,12 @@ function createActionButton(label, className, handler) {
 function renderOpinions() {
   opinionsList.replaceChildren();
 
-  const visibleOpinions = currentFilter === 'all'
-    ? opinions
-    : opinions.filter(opinion => opinion.status === currentFilter);
+  const activeOpinions = opinions.filter(opinion => !opinion.deleted_at);
+  const visibleOpinions = currentFilter === 'deleted'
+    ? opinions.filter(opinion => opinion.deleted_at)
+    : currentFilter === 'all'
+      ? activeOpinions
+      : activeOpinions.filter(opinion => opinion.status === currentFilter);
 
   if (visibleOpinions.length === 0) {
     opinionsList.appendChild(
@@ -84,11 +88,12 @@ function renderOpinions() {
     const heading = document.createElement('div');
     heading.className = 'opinion-heading';
     heading.appendChild(textElement('h2', '', opinion.title));
+    const visualStatus = opinion.deleted_at ? 'deleted' : opinion.status;
     heading.appendChild(
       textElement(
         'span',
-        `status status-${opinion.status}`,
-        statusLabels[opinion.status] || opinion.status
+        `status status-${visualStatus}`,
+        statusLabels[visualStatus] || visualStatus
       )
     );
     card.appendChild(heading);
@@ -122,21 +127,47 @@ function renderOpinions() {
     const actions = document.createElement('div');
     actions.className = 'actions';
 
-    if (opinion.status !== 'approved') {
+    if (opinion.deleted_at) {
+      const deletedNote = textElement(
+        'p',
+        'deleted-note',
+        opinion.deleted_by === 'user'
+          ? '由使用者刪除。你可以還原至待審核，或永久刪除。'
+          : '由管理員移至回收桶。你可以還原至待審核，或永久刪除。'
+      );
+      card.appendChild(deletedNote);
+      actions.appendChild(
+        createActionButton('還原', 'restore-button', () => restoreOpinion(opinion.id))
+      );
+      actions.appendChild(
+        createActionButton(
+          '永久刪除',
+          'delete-button',
+          () => permanentlyDeleteOpinion(opinion.id, opinion.title)
+        )
+      );
+    } else if (opinion.status !== 'approved') {
       actions.appendChild(
         createActionButton('通過', 'approve-button', () => updateOpinion(opinion.id, 'approved'))
       );
-    }
-
-    if (opinion.status !== 'rejected') {
+      if (opinion.status !== 'rejected') {
+        actions.appendChild(
+          createActionButton('拒絕', 'reject-button', () => updateOpinion(opinion.id, 'rejected'))
+        );
+      }
       actions.appendChild(
-        createActionButton('拒絕', 'reject-button', () => updateOpinion(opinion.id, 'rejected'))
+        createActionButton('刪除', 'delete-button', () => deleteOpinion(opinion.id, opinion.title))
+      );
+    } else {
+      if (opinion.status !== 'rejected') {
+        actions.appendChild(
+          createActionButton('拒絕', 'reject-button', () => updateOpinion(opinion.id, 'rejected'))
+        );
+      }
+      actions.appendChild(
+        createActionButton('刪除', 'delete-button', () => deleteOpinion(opinion.id, opinion.title))
       );
     }
-
-    actions.appendChild(
-      createActionButton('刪除', 'delete-button', () => deleteOpinion(opinion.id, opinion.title))
-    );
 
     card.appendChild(actions);
     opinionsList.appendChild(card);
@@ -176,7 +207,7 @@ async function updateOpinion(id, status) {
 }
 
 async function deleteOpinion(id, title) {
-  if (!window.confirm(`確定要刪除「${title}」這則評價嗎？刪除後無法復原。`)) {
+  if (!window.confirm(`確定要刪除「${title}」這則評價嗎？\n評價會移至回收桶，之後仍可還原。`)) {
     return;
   }
 
@@ -187,6 +218,38 @@ async function deleteOpinion(id, title) {
       method: 'DELETE'
     });
     await loadOpinions();
+  } catch (error) {
+    moderationMessage.textContent = error.message;
+  }
+}
+
+async function restoreOpinion(id) {
+  moderationMessage.textContent = '還原中…';
+
+  try {
+    await apiRequest(`/api/admin/opinions/${id}/restore`, {
+      method: 'PATCH'
+    });
+    await loadOpinions();
+    moderationMessage.textContent = '評價已還原並移至待審核。';
+  } catch (error) {
+    moderationMessage.textContent = error.message;
+  }
+}
+
+async function permanentlyDeleteOpinion(id, title) {
+  if (!window.confirm(`確定要永久刪除「${title}」嗎？\n此操作無法復原。`)) {
+    return;
+  }
+
+  moderationMessage.textContent = '永久刪除中…';
+
+  try {
+    await apiRequest(`/api/admin/opinions/${id}/permanent`, {
+      method: 'DELETE'
+    });
+    await loadOpinions();
+    moderationMessage.textContent = '評價已永久刪除。';
   } catch (error) {
     moderationMessage.textContent = error.message;
   }

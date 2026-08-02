@@ -56,6 +56,7 @@ app.get('/terms', sendPage('terms.html'));
 app.get('/add-review', sendPage('add-review.html'));
 app.get('/add-review/:line', sendPage('add-review.html'));
 app.get('/add-review/:line/:ship', sendPage('add-review.html'));
+app.get('/edit-review/:id', sendPage('add-review.html'));
 
 app.get('/thank-you', sendPage('thank-you.html'));
 app.get('/thank-you/:line', sendPage('thank-you.html'));
@@ -111,6 +112,40 @@ function reviewBadgeForCount(value) {
 
 function isRating(value) {
   return Number.isInteger(value) && value >= 1 && value <= 5;
+}
+
+function opinionInputFromRequest(req) {
+  const body = req.body || {};
+  const ratings = body.ratings || {};
+  const profileName = cleanText(req.auth.name, 60);
+
+  return {
+    title: cleanText(body.title, 100),
+    text: cleanText(body.text, 3000),
+    line: cleanText(body.line, 60),
+    ship: cleanText(body.ship, 100),
+    date: cleanText(body.date, 10),
+    ratings: {
+      decor: Number(ratings.decor),
+      room: Number(ratings.room),
+      service: Number(ratings.service),
+      food: Number(ratings.food)
+    },
+    author: profileName || cleanText(body.author, 60)
+  };
+}
+
+function opinionInputIsValid(opinion) {
+  const hasRequiredText = opinion.title
+    && opinion.text
+    && opinion.line
+    && opinion.ship
+    && opinion.date
+    && opinion.author;
+  const ratingsAreValid = Object.values(opinion.ratings).every(isRating);
+  const dateIsValid = /^\d{4}-\d{2}-\d{2}$/.test(opinion.date);
+
+  return Boolean(hasRequiredText && ratingsAreValid && dateIsValid);
 }
 
 function isValidDisplayName(value) {
@@ -360,6 +395,8 @@ app.get('/api/admin/opinions', requireAdmin, async (req, res) => {
         opinions.rating_service,
         opinions.rating_food,
         opinions.status,
+        opinions.deleted_at,
+        opinions.deleted_by,
         opinions.created_at
       FROM opinions
       LEFT JOIN user_profiles
@@ -370,6 +407,7 @@ app.get('/api/admin/opinions', requireAdmin, async (req, res) => {
           WHEN 'approved' THEN 2
           ELSE 3
         END,
+        opinions.deleted_at DESC NULLS LAST,
         opinions.created_at DESC,
         opinions.id DESC
     `);
@@ -395,7 +433,7 @@ app.patch('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
       `
         UPDATE opinions
         SET status = $1
-        WHERE id = $2
+        WHERE id = $2 AND deleted_at IS NULL
         RETURNING id, status
       `,
       [status, id]
@@ -412,6 +450,7 @@ app.patch('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ZWYKŁE USUNIĘCIE W PANELU — przenosi opinię do kosza.
 app.delete('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -421,7 +460,12 @@ app.delete('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'DELETE FROM opinions WHERE id = $1 RETURNING id',
+      `
+        UPDATE opinions
+        SET deleted_at = NOW(), deleted_by = 'admin'
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING id, deleted_at
+      `,
       [id]
     );
 
@@ -429,10 +473,68 @@ app.delete('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: '找不到這則評價。' });
     }
 
-    return res.json({ status: 'ok', id });
+    return res.json({ status: 'ok', id: result.rows[0].id });
   } catch (error) {
-    console.error('Unable to delete opinion:', error);
+    console.error('Unable to move opinion to recycle bin:', error);
     return res.status(500).json({ error: '暫時無法刪除評價，請稍後再試。' });
+  }
+});
+
+// PRZYWRÓCENIE Z KOSZA — zawsze wraca do kolejki moderacji.
+app.patch('/api/admin/opinions/:id/restore', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        UPDATE opinions
+        SET
+          deleted_at = NULL,
+          deleted_by = NULL,
+          status = 'pending'
+        WHERE id = $1 AND deleted_at IS NOT NULL
+        RETURNING id, status
+      `,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '回收桶中找不到這則評價。' });
+    }
+
+    return res.json({ status: 'ok', id: result.rows[0].id });
+  } catch (error) {
+    console.error('Unable to restore opinion:', error);
+    return res.status(500).json({ error: '暫時無法還原評價，請稍後再試。' });
+  }
+});
+
+// TRWAŁE USUNIĘCIE — dozwolone wyłącznie dla wpisu znajdującego się w koszu.
+app.delete('/api/admin/opinions/:id/permanent', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM opinions WHERE id = $1 AND deleted_at IS NOT NULL RETURNING id',
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '回收桶中找不到這則評價。' });
+    }
+
+    return res.json({ status: 'ok', id: result.rows[0].id });
+  } catch (error) {
+    console.error('Unable to permanently delete opinion:', error);
+    return res.status(500).json({ error: '暫時無法永久刪除評價，請稍後再試。' });
   }
 });
 
@@ -461,6 +563,7 @@ app.get('/api/opinions', async (req, res) => {
       LEFT JOIN user_profiles
         ON user_profiles.user_id = opinions.user_id
       WHERE opinions.status = 'approved'
+        AND opinions.deleted_at IS NULL
       ORDER BY opinions.created_at DESC, opinions.id DESC
     `);
 
@@ -518,7 +621,7 @@ app.get('/api/me/opinions', requireUser, async (req, res) => {
             status,
             created_at
           FROM opinions
-          WHERE user_id = $1
+          WHERE user_id = $1 AND deleted_at IS NULL
           ORDER BY created_at DESC, id DESC
         `,
         [req.auth.userId]
@@ -527,7 +630,9 @@ app.get('/api/me/opinions', requireUser, async (req, res) => {
         `
           SELECT COUNT(*)::INTEGER AS approved_review_count
           FROM opinions
-          WHERE user_id = $1 AND status = 'approved'
+          WHERE user_id = $1
+            AND status = 'approved'
+            AND deleted_at IS NULL
         `,
         [req.auth.userId]
       )
@@ -563,6 +668,169 @@ app.get('/api/me/opinions', requireUser, async (req, res) => {
     console.error('Unable to load user opinions:', error);
     return res.status(500).json({
       error: '暫時無法載入你的評價，請稍後再試。'
+    });
+  }
+});
+
+// POJEDYNCZA WŁASNA OPINIA — używana do bezpiecznego wypełnienia formularza edycji.
+app.get('/api/me/opinions/:id', requireUser, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          id,
+          line,
+          ship,
+          TO_CHAR(cruise_date, 'YYYY-MM-DD') AS date,
+          title,
+          review_text AS text,
+          rating_decor,
+          rating_room,
+          rating_service,
+          rating_food,
+          status
+        FROM opinions
+        WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+      `,
+      [id, req.auth.userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '找不到這則評價。' });
+    }
+
+    const row = result.rows[0];
+    return res.json({
+      id: row.id,
+      line: row.line,
+      ship: row.ship,
+      date: row.date,
+      title: row.title,
+      text: row.text,
+      status: row.status,
+      ratings: {
+        decor: row.rating_decor,
+        room: row.rating_room,
+        service: row.rating_service,
+        food: row.rating_food
+      }
+    });
+  } catch (error) {
+    console.error('Unable to load user opinion:', error);
+    return res.status(500).json({
+      error: '暫時無法載入這則評價，請稍後再試。'
+    });
+  }
+});
+
+// EDYCJA WŁASNEJ OPINII.
+// Każda zmiana ponownie ustawia status pending, także dla opinii zatwierdzonej.
+app.patch('/api/me/opinions/:id', requireUser, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  const opinion = opinionInputFromRequest(req);
+
+  if (!opinionInputIsValid(opinion)) {
+    return res.status(400).json({
+      error: '請檢查所有欄位是否已正確填寫。'
+    });
+  }
+
+  try {
+    await syncUserProfile({
+      ...req.auth,
+      name: opinion.author
+    });
+
+    const result = await pool.query(
+      `
+        UPDATE opinions
+        SET
+          line = $1,
+          ship = $2,
+          cruise_date = $3,
+          author = $4,
+          title = $5,
+          review_text = $6,
+          rating_decor = $7,
+          rating_room = $8,
+          rating_service = $9,
+          rating_food = $10,
+          status = 'pending'
+        WHERE id = $11 AND user_id = $12 AND deleted_at IS NULL
+        RETURNING id, status
+      `,
+      [
+        opinion.line,
+        opinion.ship,
+        opinion.date,
+        opinion.author,
+        opinion.title,
+        opinion.text,
+        opinion.ratings.decor,
+        opinion.ratings.room,
+        opinion.ratings.service,
+        opinion.ratings.food,
+        id,
+        req.auth.userId
+      ]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '找不到這則評價。' });
+    }
+
+    return res.json({
+      status: 'ok',
+      id: result.rows[0].id,
+      reviewStatus: result.rows[0].status
+    });
+  } catch (error) {
+    console.error('Unable to update user opinion:', error);
+    return res.status(500).json({
+      error: '暫時無法更新評價，請稍後再試。'
+    });
+  }
+});
+
+// USUNIĘCIE WŁASNEJ OPINII — trafia do kosza, a user_id chroni cudze wpisy.
+app.delete('/api/me/opinions/:id', requireUser, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        UPDATE opinions
+        SET deleted_at = NOW(), deleted_by = 'user'
+        WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+        RETURNING id, deleted_at
+      `,
+      [id, req.auth.userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '找不到這則評價。' });
+    }
+
+    return res.json({ status: 'ok', id: result.rows[0].id });
+  } catch (error) {
+    console.error('Unable to delete user opinion:', error);
+    return res.status(500).json({
+      error: '暫時無法刪除評價，請稍後再試。'
     });
   }
 });
@@ -736,34 +1004,9 @@ app.delete('/api/me/account', requireUser, async (req, res) => {
 
 // ZAPISYWANIE OPINII — tylko dla zalogowanych użytkowników.
 app.post('/add-opinion', requireUser, async (req, res) => {
-  const ratings = req.body.ratings || {};
-  const profileName = cleanText(req.auth.name, 60);
-  const newOpinion = {
-    title: cleanText(req.body.title, 100),
-    text: cleanText(req.body.text, 3000),
-    line: cleanText(req.body.line, 60),
-    ship: cleanText(req.body.ship, 100),
-    date: cleanText(req.body.date, 10),
-    ratings: {
-      decor: Number(ratings.decor),
-      room: Number(ratings.room),
-      service: Number(ratings.service),
-      food: Number(ratings.food)
-    },
-    author: profileName || cleanText(req.body.author, 60)
-  };
+  const newOpinion = opinionInputFromRequest(req);
 
-  const hasRequiredText = newOpinion.title
-    && newOpinion.text
-    && newOpinion.line
-    && newOpinion.ship
-    && newOpinion.date
-    && newOpinion.author;
-
-  const ratingsAreValid = Object.values(newOpinion.ratings).every(isRating);
-  const dateIsValid = /^\d{4}-\d{2}-\d{2}$/.test(newOpinion.date);
-
-  if (!hasRequiredText || !ratingsAreValid || !dateIsValid) {
+  if (!opinionInputIsValid(newOpinion)) {
     return res.status(400).json({
       error: '請檢查所有欄位是否已正確填寫。'
     });
@@ -855,8 +1098,20 @@ async function startServer() {
       ADD COLUMN IF NOT EXISTS user_id TEXT
     `);
     await pool.query(`
+      ALTER TABLE opinions
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ
+    `);
+    await pool.query(`
+      ALTER TABLE opinions
+      ADD COLUMN IF NOT EXISTS deleted_by TEXT
+    `);
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS opinions_user_id_index
       ON opinions (user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS opinions_deleted_at_index
+      ON opinions (deleted_at)
     `);
 
     app.listen(PORT, '0.0.0.0', () => {

@@ -1570,6 +1570,23 @@ h3 {
   color: var(--danger);
 }
 
+.account-reviews-message {
+  margin: 0 0 16px;
+  padding: 12px 15px;
+  border: 1px solid #b8dac7;
+  border-radius: 9px;
+  background: #eef9f2;
+  color: #17643a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.account-reviews-message.error {
+  border-color: #ecc3c3;
+  background: #fff4f4;
+  color: var(--danger);
+}
+
 .account-reviews-list {
   display: grid;
   gap: 16px;
@@ -1668,6 +1685,52 @@ h3 {
 
 .account-review-link:hover {
   text-decoration: underline;
+}
+
+.account-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-review-action {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.account-review-edit {
+  color: var(--ocean-600);
+}
+
+.account-review-delete {
+  color: var(--danger);
+}
+
+.account-review-action:hover {
+  border-color: currentColor;
+}
+
+.account-review-action:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.form-notice {
+  margin: 0 0 26px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--gold-500);
+  border-radius: 3px 9px 9px 3px;
+  background: var(--ivory-100);
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .account-empty-reviews {
@@ -2219,6 +2282,15 @@ h3 {
 
   .account-review-status-note {
     flex-basis: auto;
+  }
+
+  .account-review-actions {
+    width: 100%;
+  }
+
+  .account-review-action {
+    flex: 1 1 0;
+    text-align: center;
   }
 
   .auth-required .add-button {

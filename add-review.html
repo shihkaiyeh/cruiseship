@@ -14,13 +14,13 @@
     <div class="page-shell">
       <header class="form-page-header">
         <p class="eyebrow">Share your journey</p>
-        <h1 class="page-title">分享你的搭乘體驗</h1>
+        <h1 class="page-title" id="reviewPageTitle">分享你的搭乘體驗</h1>
         <p class="page-intro">你的真實心得，能幫助下一位旅客做出更適合自己的選擇。</p>
       </header>
 
       <section class="form-box">
-        <h1>新增評價</h1>
-        <p class="form-lead">所有評價送出後會先經過管理員審核，再顯示於網站上。</p>
+        <h1 id="reviewFormTitle">新增評價</h1>
+        <p class="form-lead" id="reviewFormLead">所有評價送出後會先經過管理員審核，再顯示於網站上。</p>
 
         <div id="reviewLoginRequired" class="auth-required" hidden>
           <p class="auth-step-label">需要登入</p>
@@ -29,7 +29,17 @@
           <a id="reviewLoginLink" class="add-button" href="/account">登入／建立帳號</a>
         </div>
 
+        <div id="reviewLoadError" class="auth-required" hidden>
+          <p class="auth-step-label">無法編輯</p>
+          <h2 id="reviewLoadErrorTitle">找不到這則評價。</h2>
+          <p id="reviewLoadErrorText">這則評價可能已被刪除，或不屬於你的帳號。</p>
+          <a class="add-button" href="/account">回到我的帳號</a>
+        </div>
+
         <form id="reviewForm" hidden>
+          <p id="editApprovalNotice" class="form-notice" hidden>
+            修改後，評價將重新送交審核，審核期間不會顯示在網站上。
+          </p>
           <div class="form-grid">
             <div class="field field-full">
               <label for="title">評價標題</label>
