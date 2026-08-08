@@ -194,14 +194,49 @@
     }
   }
 
+  function initBackToTop() {
+    if (!document.getElementById('reviews') || document.querySelector('.back-to-top')) {
+      return;
+    }
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'back-to-top';
+    button.setAttribute('aria-label', '回到頁首');
+    button.setAttribute('aria-hidden', 'true');
+    button.tabIndex = -1;
+    button.innerHTML = '<span aria-hidden="true">↑</span>';
+
+    const updateVisibility = () => {
+      const isVisible = window.scrollY > 600;
+      button.classList.toggle('is-visible', isVisible);
+      button.setAttribute('aria-hidden', String(!isVisible));
+      button.tabIndex = isVisible ? 0 : -1;
+    };
+
+    button.addEventListener('click', () => {
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({
+        top: 0,
+        behavior: reduceMotion ? 'auto' : 'smooth'
+      });
+    });
+
+    document.body.appendChild(button);
+    updateVisibility();
+    window.addEventListener('scroll', updateVisibility, { passive: true });
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       initMenu();
       initAuthNavigation();
+      initBackToTop();
     });
   } else {
     initMenu();
     initAuthNavigation();
+    initBackToTop();
   }
 
   window.addEventListener('cruise-auth-changed', initAuthNavigation);
