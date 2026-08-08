@@ -240,7 +240,7 @@ async function updateNavigation(root = document) {
 
     links.forEach(link => {
       link.href = '/account';
-      link.textContent = isLoggedIn ? '我的帳號' : '登入／免費註冊';
+      link.textContent = isLoggedIn ? '我的帳號' : '登入／註冊';
       link.hidden = isAccountPage;
     });
   } catch {
@@ -248,7 +248,7 @@ async function updateNavigation(root = document) {
 
     links.forEach(link => {
       link.href = '/account';
-      link.textContent = '登入／免費註冊';
+      link.textContent = '登入／註冊';
       link.hidden = isAccountPage;
     });
   }

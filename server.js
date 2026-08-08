@@ -15,6 +15,7 @@ const NEON_API_KEY = process.env.NEON_API_KEY || '';
 const NEON_PROJECT_ID = process.env.NEON_PROJECT_ID || '';
 const NEON_BRANCH_ID = process.env.NEON_BRANCH_ID || '';
 const submissionHistory = new Map();
+const commentHistory = new Map();
 const loginHistory = new Map();
 let remoteJwks;
 
@@ -191,6 +192,22 @@ function canSubmit(ip) {
   return true;
 }
 
+function canSubmitComment(key) {
+  const now = Date.now();
+  const oneHourAgo = now - 60 * 60 * 1000;
+  const recentSubmissions = (commentHistory.get(key) || [])
+    .filter(timestamp => timestamp > oneHourAgo);
+
+  if (recentSubmissions.length >= 20) {
+    commentHistory.set(key, recentSubmissions);
+    return false;
+  }
+
+  recentSubmissions.push(now);
+  commentHistory.set(key, recentSubmissions);
+  return true;
+}
+
 function canAttemptLogin(ip) {
   const now = Date.now();
   const fifteenMinutesAgo = now - 15 * 60 * 1000;
@@ -324,11 +341,7 @@ async function requireUser(req, res, next) {
 
   try {
     const payload = await verifyUserToken(token);
-    req.auth = {
-      userId: payload.sub,
-      email: typeof payload.email === 'string' ? payload.email : '',
-      name: typeof payload.name === 'string' ? payload.name : ''
-    };
+    req.auth = userAuthFromPayload(payload);
     return next();
   } catch (error) {
     if (error.code === 'AUTH_NOT_CONFIGURED') {
@@ -342,6 +355,33 @@ async function requireUser(req, res, next) {
       error: '登入已失效，請重新登入。'
     });
   }
+}
+
+function userAuthFromPayload(payload) {
+  return {
+    userId: payload.sub,
+    email: typeof payload.email === 'string' ? payload.email : '',
+    name: typeof payload.name === 'string' ? payload.name : ''
+  };
+}
+
+// Publiczne pobieranie komentarzy może opcjonalnie rozpoznać użytkownika.
+// Niepoprawny lub wygasły token nie daje żadnych uprawnień i jest traktowany jak brak logowania.
+async function optionalUser(req, res, next) {
+  const token = getBearerToken(req);
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const payload = await verifyUserToken(token);
+    req.auth = userAuthFromPayload(payload);
+  } catch {
+    req.auth = null;
+  }
+
+  return next();
 }
 
 // LOGOWANIE ADMINISTRATORA
@@ -558,10 +598,17 @@ app.get('/api/opinions', async (req, res) => {
           WHEN opinions.user_id IS NULL THEN 0
           ELSE COUNT(*) OVER (PARTITION BY opinions.user_id)
         END AS approved_review_count,
+        COALESCE(comment_stats.comment_count, 0) AS comment_count,
         opinions.created_at
       FROM opinions
       LEFT JOIN user_profiles
         ON user_profiles.user_id = opinions.user_id
+      LEFT JOIN (
+        SELECT opinion_id, COUNT(*)::INTEGER AS comment_count
+        FROM comments
+        GROUP BY opinion_id
+      ) AS comment_stats
+        ON comment_stats.opinion_id = opinions.id
       WHERE opinions.status = 'approved'
         AND opinions.deleted_at IS NULL
       ORDER BY opinions.created_at DESC, opinions.id DESC
@@ -586,6 +633,7 @@ app.get('/api/opinions', async (req, res) => {
         },
         approvedReviewCount,
         badge: reviewBadgeForCount(approvedReviewCount),
+        commentCount: Number(row.comment_count) || 0,
         createdAt: row.created_at
       };
     });
@@ -596,6 +644,159 @@ app.get('/api/opinions', async (req, res) => {
     return res.status(500).json({
       error: '暫時無法載入評價，請稍後再試。'
     });
+  }
+});
+
+// PUBLICZNE KOMENTARZE POD ZATWIERDZONĄ OPINIĄ.
+// Zalogowany użytkownik oraz administrator otrzymują informację, które wpisy mogą usunąć.
+app.get('/api/opinions/:id/comments', optionalUser, async (req, res) => {
+  const opinionId = Number(req.params.id);
+
+  if (!Number.isInteger(opinionId) || opinionId <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  const isAdmin = verifyAdminToken(getCookie(req, 'admin_session'));
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          comments.id,
+          comments.comment_text AS text,
+          comments.user_id,
+          COALESCE(user_profiles.display_name, '郵輪旅人') AS author,
+          COALESCE(author_stats.approved_review_count, 0) AS approved_review_count,
+          comments.created_at
+        FROM comments
+        INNER JOIN opinions
+          ON opinions.id = comments.opinion_id
+        LEFT JOIN user_profiles
+          ON user_profiles.user_id = comments.user_id
+        LEFT JOIN (
+          SELECT user_id, COUNT(*)::INTEGER AS approved_review_count
+          FROM opinions
+          WHERE status = 'approved'
+            AND deleted_at IS NULL
+          GROUP BY user_id
+        ) AS author_stats
+          ON author_stats.user_id = comments.user_id
+        WHERE comments.opinion_id = $1
+          AND opinions.status = 'approved'
+          AND opinions.deleted_at IS NULL
+        ORDER BY comments.created_at ASC, comments.id ASC
+      `,
+      [opinionId]
+    );
+
+    return res.json(result.rows.map(row => {
+      const approvedReviewCount = Number(row.approved_review_count) || 0;
+
+      return {
+        id: row.id,
+        text: row.text,
+        author: row.author,
+        approvedReviewCount,
+        badge: reviewBadgeForCount(approvedReviewCount),
+        createdAt: row.created_at,
+        canDelete: Boolean(isAdmin || req.auth?.userId === row.user_id)
+      };
+    }));
+  } catch (error) {
+    console.error('Unable to load comments:', error);
+    return res.status(500).json({ error: '暫時無法載入留言，請稍後再試。' });
+  }
+});
+
+// DODANIE KOMENTARZA — tylko przez zalogowane konto i tylko pod publiczną opinią.
+app.post('/api/opinions/:id/comments', requireUser, async (req, res) => {
+  const opinionId = Number(req.params.id);
+  const text = cleanText(req.body?.text, 1000);
+
+  if (!Number.isInteger(opinionId) || opinionId <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  if (!text) {
+    return res.status(400).json({ error: '請輸入留言內容。' });
+  }
+
+  if (!canSubmitComment(`${req.auth.userId}:${req.ip}`)) {
+    return res.status(429).json({ error: '留言次數過多，請稍後再試。' });
+  }
+
+  try {
+    const displayName = await syncUserProfile(req.auth);
+
+    if (!displayName) {
+      return res.status(400).json({ error: '帳號顯示名稱不正確。' });
+    }
+
+    const result = await pool.query(
+      `
+        INSERT INTO comments (opinion_id, user_id, comment_text)
+        SELECT id, $2, $3
+        FROM opinions
+        WHERE id = $1
+          AND status = 'approved'
+          AND deleted_at IS NULL
+        RETURNING id, opinion_id, created_at
+      `,
+      [opinionId, req.auth.userId, text]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '找不到這則公開評價。' });
+    }
+
+    return res.status(201).json({
+      status: 'ok',
+      id: result.rows[0].id,
+      opinionId: result.rows[0].opinion_id,
+      createdAt: result.rows[0].created_at
+    });
+  } catch (error) {
+    console.error('Unable to save comment:', error);
+    return res.status(500).json({ error: '暫時無法發布留言，請稍後再試。' });
+  }
+});
+
+// USUNIĘCIE KOMENTARZA — autor usuwa własny wpis, administrator dowolny.
+app.delete('/api/comments/:id', optionalUser, async (req, res) => {
+  const commentId = Number(req.params.id);
+  const isAdmin = verifyAdminToken(getCookie(req, 'admin_session'));
+
+  if (!Number.isInteger(commentId) || commentId <= 0) {
+    return res.status(400).json({ error: '留言識別碼不正確。' });
+  }
+
+  if (!isAdmin && !req.auth?.userId) {
+    return res.status(401).json({ error: '請先登入，才能刪除留言。' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        DELETE FROM comments
+        WHERE id = $1
+          AND ($2::BOOLEAN OR user_id = $3)
+        RETURNING id, opinion_id
+      `,
+      [commentId, isAdmin, req.auth?.userId || '']
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '找不到這則留言，或你沒有刪除權限。' });
+    }
+
+    return res.json({
+      status: 'ok',
+      id: result.rows[0].id,
+      opinionId: result.rows[0].opinion_id
+    });
+  } catch (error) {
+    console.error('Unable to delete comment:', error);
+    return res.status(500).json({ error: '暫時無法刪除留言，請稍後再試。' });
   }
 });
 
@@ -937,6 +1138,10 @@ app.delete('/api/me/account', requireUser, async (req, res) => {
 
   try {
     await client.query('BEGIN');
+    const commentsResult = await client.query(
+      'DELETE FROM comments WHERE user_id = $1',
+      [req.auth.userId]
+    );
     const opinionsResult = await client.query(
       'DELETE FROM opinions WHERE user_id = $1',
       [req.auth.userId]
@@ -979,6 +1184,7 @@ app.delete('/api/me/account', requireUser, async (req, res) => {
 
     return res.json({
       status: 'ok',
+      deletedComments: commentsResult.rowCount,
       deletedOpinions: opinionsResult.rowCount
     });
   } catch (error) {
@@ -987,6 +1193,8 @@ app.delete('/api/me/account', requireUser, async (req, res) => {
     // Jeśli Neon usunął konto, ale zatwierdzenie transakcji nie powiodło się,
     // ponawiamy samo czyszczenie danych aplikacji bez wymagania tokenu użytkownika.
     if (authUserDeleted) {
+      await pool.query('DELETE FROM comments WHERE user_id = $1', [req.auth.userId])
+        .catch(cleanupError => console.error('Unable to finish comment cleanup:', cleanupError));
       await pool.query('DELETE FROM opinions WHERE user_id = $1', [req.auth.userId])
         .catch(cleanupError => console.error('Unable to finish opinion cleanup:', cleanupError));
       await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [req.auth.userId])
@@ -1112,6 +1320,25 @@ async function startServer() {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS opinions_deleted_at_index
       ON opinions (deleted_at)
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id BIGSERIAL PRIMARY KEY,
+        opinion_id INTEGER NOT NULL REFERENCES opinions(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        comment_text TEXT NOT NULL CHECK (
+          CHAR_LENGTH(comment_text) BETWEEN 1 AND 1000
+        ),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS comments_opinion_id_index
+      ON comments (opinion_id, created_at, id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS comments_user_id_index
+      ON comments (user_id)
     `);
 
     app.listen(PORT, '0.0.0.0', () => {

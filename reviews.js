@@ -33,6 +33,281 @@ function createUserBadge(badge, approvedReviewCount) {
   return element;
 }
 
+let viewerSessionPromise;
+
+function getViewerSession() {
+  if (!window.CruiseAuth) {
+    return Promise.resolve(null);
+  }
+
+  if (!viewerSessionPromise) {
+    viewerSessionPromise = window.CruiseAuth.getSession().catch(() => null);
+  }
+
+  return viewerSessionPromise;
+}
+
+async function commentApiRequest(url, options = {}) {
+  const session = await getViewerSession();
+  const response = session?.user
+    ? await window.CruiseAuth.authFetch(url, options)
+    : await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(data.error || '發生錯誤，請稍後再試。');
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+function formatCommentDate(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function createCommentsSection(opinion) {
+  const opinionId = Number(opinion.id);
+  const section = document.createElement('section');
+  const panelId = `review-${opinionId}-comments-panel`;
+  const anchorId = `review-${opinionId}-comments`;
+  let commentCount = Number(opinion.commentCount) || 0;
+  let commentsLoaded = false;
+  let composerLoaded = false;
+
+  section.className = 'review-comments';
+  section.id = anchorId;
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'review-comments-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-controls', panelId);
+
+  const updateToggle = () => {
+    toggle.textContent = `留言（${commentCount}）`;
+  };
+
+  updateToggle();
+
+  const panel = document.createElement('div');
+  panel.className = 'review-comments-panel';
+  panel.id = panelId;
+  panel.hidden = true;
+
+  const list = document.createElement('div');
+  list.className = 'review-comments-list';
+
+  const composer = document.createElement('div');
+  composer.className = 'review-comment-composer';
+
+  const message = createTextElement('p', 'review-comments-message', '');
+  message.setAttribute('role', 'status');
+  message.setAttribute('aria-live', 'polite');
+
+  const setMessage = (text, tone = '') => {
+    message.textContent = text;
+    message.classList.toggle('is-error', tone === 'error');
+    message.classList.toggle('is-success', tone === 'success');
+  };
+
+  async function loadComments(force = false) {
+    if (commentsLoaded && !force) {
+      return;
+    }
+
+    list.replaceChildren(
+      createTextElement('p', 'review-comments-loading', '正在載入留言…')
+    );
+
+    try {
+      const comments = await commentApiRequest(`/api/opinions/${opinionId}/comments`);
+      commentCount = comments.length;
+      commentsLoaded = true;
+      updateToggle();
+      list.replaceChildren();
+
+      if (comments.length === 0) {
+        list.appendChild(
+          createTextElement('p', 'review-comments-empty', '目前還沒有留言。')
+        );
+        return;
+      }
+
+      comments.forEach(comment => {
+        const item = document.createElement('article');
+        item.className = 'review-comment';
+
+        const header = document.createElement('div');
+        header.className = 'review-comment-header';
+
+        const identity = document.createElement('div');
+        identity.className = 'review-comment-identity';
+        identity.appendChild(
+          createTextElement('strong', 'review-comment-author', comment.author || '郵輪旅人')
+        );
+
+        const badge = createUserBadge(comment.badge, comment.approvedReviewCount);
+        if (badge) {
+          identity.appendChild(badge);
+        }
+
+        header.append(
+          identity,
+          createTextElement('time', 'review-comment-date', formatCommentDate(comment.createdAt))
+        );
+        item.append(
+          header,
+          createTextElement('p', 'review-comment-text', comment.text || '')
+        );
+
+        if (comment.canDelete) {
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'button';
+          deleteButton.className = 'review-comment-delete';
+          deleteButton.textContent = '刪除';
+
+          deleteButton.addEventListener('click', async () => {
+            if (!window.confirm('確定要刪除這則留言嗎？\n刪除後無法復原。')) {
+              return;
+            }
+
+            deleteButton.disabled = true;
+            setMessage('刪除中…');
+
+            try {
+              await commentApiRequest(`/api/comments/${comment.id}`, { method: 'DELETE' });
+              await loadComments(true);
+              setMessage('留言已刪除。', 'success');
+            } catch (error) {
+              deleteButton.disabled = false;
+              setMessage(error.message, 'error');
+            }
+          });
+
+          item.appendChild(deleteButton);
+        }
+
+        list.appendChild(item);
+      });
+    } catch (error) {
+      list.replaceChildren(
+        createTextElement('p', 'review-comments-error', error.message)
+      );
+    }
+  }
+
+  async function loadComposer() {
+    if (composerLoaded) {
+      return;
+    }
+
+    composerLoaded = true;
+    const session = await getViewerSession();
+
+    if (!session?.user) {
+      const prompt = document.createElement('div');
+      prompt.className = 'review-comment-login';
+      prompt.appendChild(createTextElement('span', '', '登入後即可留言'));
+
+      const loginLink = document.createElement('a');
+      const returnTo = `${window.location.pathname}${window.location.search}#${anchorId}`;
+      loginLink.href = `/account?returnTo=${encodeURIComponent(returnTo)}`;
+      loginLink.textContent = '登入／註冊';
+      prompt.appendChild(loginLink);
+      composer.appendChild(prompt);
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.className = 'review-comment-form';
+
+    const textarea = document.createElement('textarea');
+    textarea.maxLength = 1000;
+    textarea.placeholder = '寫下你的留言…';
+    textarea.setAttribute('aria-label', '留言內容');
+    textarea.required = true;
+
+    const footer = document.createElement('div');
+    footer.className = 'review-comment-form-footer';
+    footer.appendChild(createTextElement('span', '', `將以 ${session.user.name} 的名稱發布`));
+
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit';
+    submitButton.textContent = '發布留言';
+    footer.appendChild(submitButton);
+    form.append(textarea, footer);
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const text = textarea.value.trim();
+
+      if (!text) {
+        setMessage('請輸入留言內容。', 'error');
+        textarea.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = '發布中…';
+      setMessage('');
+
+      try {
+        await commentApiRequest(`/api/opinions/${opinionId}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        textarea.value = '';
+        await loadComments(true);
+        setMessage('留言已發布。', 'success');
+      } catch (error) {
+        setMessage(error.message, 'error');
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = '發布留言';
+      }
+    });
+
+    composer.appendChild(form);
+  }
+
+  toggle.addEventListener('click', async () => {
+    const willOpen = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(willOpen));
+    panel.hidden = !willOpen;
+
+    if (willOpen) {
+      await Promise.all([loadComments(), loadComposer()]);
+    }
+  });
+
+  panel.append(list, composer, message);
+  section.append(toggle, panel);
+
+  if (window.location.hash === `#${anchorId}`) {
+    window.setTimeout(() => {
+      toggle.click();
+      section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 0);
+  }
+
+  return section;
+}
+
 function createReviewCard(opinion) {
   const review = document.createElement('article');
   review.className = 'review';
@@ -119,6 +394,8 @@ function createReviewCard(opinion) {
 
     review.appendChild(toggleTextButton);
   }
+
+  review.appendChild(createCommentsSection(opinion));
 
   return review;
 }

@@ -16,7 +16,7 @@ Co zostało dodane:
 4. Usunięcie jest trwałe: kasuje konto i wszystkie opinie tego konta.
 
 5. Na stronie głównej, w prawym górnym rogu zdjęcia, jest mały przycisk:
-   - „登入／免費註冊”, gdy użytkownik nie jest zalogowany,
+   - „登入／註冊”, gdy użytkownik nie jest zalogowany,
    - „我的帳號”, gdy użytkownik jest zalogowany.
 
 

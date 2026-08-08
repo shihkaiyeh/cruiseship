@@ -1084,6 +1084,223 @@ h3 {
   font-size: 9px;
 }
 
+.review-comments {
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.review-comments-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ocean-600);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.review-comments-toggle::after {
+  content: "↓";
+  font-size: 13px;
+  transition: transform 0.18s ease;
+}
+
+.review-comments-toggle[aria-expanded="true"]::after {
+  transform: rotate(180deg);
+}
+
+.review-comments-toggle:hover {
+  color: var(--navy-900);
+}
+
+.review-comments-panel {
+  padding-top: 13px;
+}
+
+.review-comments-panel[hidden] {
+  display: none;
+}
+
+.review-comments-list {
+  display: grid;
+  gap: 12px;
+}
+
+.review-comment {
+  position: relative;
+  padding: 14px 16px;
+  border-left: 2px solid rgba(35, 131, 168, 0.32);
+  border-radius: 2px 9px 9px 2px;
+  background: var(--ivory-50);
+}
+
+.review-comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-comment-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.review-comment-author {
+  color: var(--navy-900);
+  font-size: 14px;
+}
+
+.review-comment .user-badge {
+  min-height: 21px;
+  padding: 2px 7px;
+  font-size: 10px;
+}
+
+.review-comment-date {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.review-comment-text {
+  margin: 8px 0 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.review-comment-delete {
+  margin-top: 8px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.review-comment-delete:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.review-comment-delete:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.review-comment-composer {
+  margin-top: 14px;
+}
+
+.review-comment-login {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.review-comment-login a {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid rgba(199, 163, 91, 0.62);
+  border-radius: 6px;
+  color: var(--navy-900);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.review-comment-login a:hover {
+  border-color: var(--gold-500);
+  background: var(--ivory-100);
+}
+
+.review-comment-form {
+  display: grid;
+  gap: 9px;
+}
+
+.review-comment-form textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 11px 13px;
+  border: 1px solid #cbd5da;
+  border-radius: 7px;
+  outline: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.review-comment-form textarea:focus {
+  border-color: var(--ocean-500);
+  box-shadow: 0 0 0 3px rgba(35, 131, 168, 0.11);
+}
+
+.review-comment-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.review-comment-form-footer span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-comment-form-footer button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--navy-900);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.review-comment-form-footer button:hover {
+  background: var(--ocean-600);
+}
+
+.review-comment-form-footer button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.review-comments-loading,
+.review-comments-empty,
+.review-comments-error,
+.review-comments-message {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.review-comments-error,
+.review-comments-message.is-error {
+  color: var(--danger);
+}
+
+.review-comments-message.is-success {
+  color: var(--success);
+}
+
 .empty-reviews,
 .reviews-error {
   padding: 54px 24px;
@@ -2236,6 +2453,19 @@ h3 {
 
   .review-text.is-collapsed {
     -webkit-line-clamp: 5;
+  }
+
+  .review-comment-header,
+  .review-comment-form-footer,
+  .review-comment-login {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .review-comment-form-footer button,
+  .review-comment-login a {
+    width: 100%;
+    text-align: center;
   }
 
   .field-full,
