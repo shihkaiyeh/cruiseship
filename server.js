@@ -482,6 +482,7 @@ app.get('/api/admin/comments', requireAdmin, async (req, res) => {
       SELECT
         comments.id,
         comments.opinion_id,
+        comments.parent_comment_id,
         comments.comment_text AS text,
         COALESCE(user_profiles.display_name, '郵輪旅人') AS author,
         comments.created_at,
@@ -504,6 +505,7 @@ app.get('/api/admin/comments', requireAdmin, async (req, res) => {
     return res.json(result.rows.map(row => ({
       id: row.id,
       opinionId: row.opinion_id,
+      isReply: Boolean(row.parent_comment_id),
       text: row.text,
       author: row.author,
       createdAt: row.created_at,
@@ -754,6 +756,7 @@ app.get('/api/opinions/:id/comments', optionalUser, async (req, res) => {
           comments.id,
           comments.comment_text AS text,
           comments.user_id,
+          comments.parent_comment_id,
           COALESCE(user_profiles.display_name, '郵輪旅人') AS author,
           COALESCE(author_stats.approved_review_count, 0) AS approved_review_count,
           comments.created_at,
@@ -790,6 +793,8 @@ app.get('/api/opinions/:id/comments', optionalUser, async (req, res) => {
         badge: reviewBadgeForCount(approvedReviewCount),
         createdAt: row.created_at,
         editedAt: row.edited_at,
+        parentCommentId: row.parent_comment_id,
+        canReply: Boolean(req.auth?.userId && !row.parent_comment_id),
         canEdit: Boolean(req.auth?.userId === row.user_id),
         canDelete: Boolean(isAdmin || req.auth?.userId === row.user_id)
       };
@@ -850,6 +855,74 @@ app.post('/api/opinions/:id/comments', requireUser, async (req, res) => {
   } catch (error) {
     console.error('Unable to save comment:', error);
     return res.status(500).json({ error: '暫時無法發布留言，請稍後再試。' });
+  }
+});
+
+// ODPOWIEDŹ NA KOMENTARZ — tylko jeden poziom, bez odpowiedzi na odpowiedzi.
+app.post('/api/comments/:id/replies', requireUser, async (req, res) => {
+  const parentCommentId = Number(req.params.id);
+  const text = cleanText(req.body?.text, 1000);
+
+  if (!Number.isInteger(parentCommentId) || parentCommentId <= 0) {
+    return res.status(400).json({ error: '留言識別碼不正確。' });
+  }
+
+  if (!text) {
+    return res.status(400).json({ error: '請輸入回覆內容。' });
+  }
+
+  if (!canSubmitComment(`${req.auth.userId}:${req.ip}`)) {
+    return res.status(429).json({ error: '留言次數過多，請稍後再試。' });
+  }
+
+  try {
+    const displayName = await syncUserProfile(req.auth);
+
+    if (!displayName) {
+      return res.status(400).json({ error: '帳號顯示名稱不正確。' });
+    }
+
+    const result = await pool.query(
+      `
+        INSERT INTO comments (
+          opinion_id,
+          user_id,
+          comment_text,
+          parent_comment_id
+        )
+        SELECT
+          parent.opinion_id,
+          $2,
+          $3,
+          parent.id
+        FROM comments AS parent
+        INNER JOIN opinions
+          ON opinions.id = parent.opinion_id
+        WHERE parent.id = $1
+          AND parent.parent_comment_id IS NULL
+          AND opinions.status = 'approved'
+          AND opinions.deleted_at IS NULL
+        RETURNING id, opinion_id, parent_comment_id, created_at
+      `,
+      [parentCommentId, req.auth.userId, text]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        error: '找不到這則留言，或這是一則回覆。'
+      });
+    }
+
+    return res.status(201).json({
+      status: 'ok',
+      id: result.rows[0].id,
+      opinionId: result.rows[0].opinion_id,
+      parentCommentId: result.rows[0].parent_comment_id,
+      createdAt: result.rows[0].created_at
+    });
+  } catch (error) {
+    console.error('Unable to save comment reply:', error);
+    return res.status(500).json({ error: '暫時無法發布回覆，請稍後再試。' });
   }
 });
 
@@ -936,6 +1009,116 @@ app.delete('/api/comments/:id', optionalUser, async (req, res) => {
   } catch (error) {
     console.error('Unable to delete comment:', error);
     return res.status(500).json({ error: '暫時無法刪除留言，請稍後再試。' });
+  }
+});
+
+// LICZNIK NIEPRZECZYTANYCH ODPOWIEDZI DLA ZALOGOWANEGO UŻYTKOWNIKA.
+app.get('/api/me/notifications/unread-count', requireUser, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+        SELECT COUNT(*)::INTEGER AS count
+        FROM comments AS reply
+        INNER JOIN comments AS parent
+          ON parent.id = reply.parent_comment_id
+        INNER JOIN opinions
+          ON opinions.id = reply.opinion_id
+        WHERE parent.user_id = $1
+          AND reply.user_id <> $1
+          AND reply.reply_read_at IS NULL
+          AND opinions.status = 'approved'
+          AND opinions.deleted_at IS NULL
+      `,
+      [req.auth.userId]
+    );
+
+    return res.json({ count: Number(result.rows[0]?.count) || 0 });
+  } catch (error) {
+    console.error('Unable to count user notifications:', error);
+    return res.status(500).json({ error: '暫時無法取得通知數量，請稍後再試。' });
+  }
+});
+
+// NIEPRZECZYTANE ODPOWIEDZI W PANELU KONTA.
+app.get('/api/me/notifications', requireUser, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          reply.id AS reply_id,
+          reply.opinion_id,
+          reply.comment_text AS reply_text,
+          reply.created_at,
+          COALESCE(reply_profile.display_name, '郵輪旅人') AS reply_author,
+          parent.comment_text AS original_text,
+          opinions.title AS opinion_title,
+          opinions.line,
+          opinions.ship
+        FROM comments AS reply
+        INNER JOIN comments AS parent
+          ON parent.id = reply.parent_comment_id
+        INNER JOIN opinions
+          ON opinions.id = reply.opinion_id
+        LEFT JOIN user_profiles AS reply_profile
+          ON reply_profile.user_id = reply.user_id
+        WHERE parent.user_id = $1
+          AND reply.user_id <> $1
+          AND reply.reply_read_at IS NULL
+          AND opinions.status = 'approved'
+          AND opinions.deleted_at IS NULL
+        ORDER BY reply.created_at DESC, reply.id DESC
+      `,
+      [req.auth.userId]
+    );
+
+    return res.json(result.rows.map(row => ({
+      replyId: row.reply_id,
+      opinionId: row.opinion_id,
+      author: row.reply_author,
+      text: row.reply_text,
+      originalText: row.original_text,
+      opinionTitle: row.opinion_title,
+      line: row.line,
+      ship: row.ship,
+      createdAt: row.created_at
+    })));
+  } catch (error) {
+    console.error('Unable to load user notifications:', error);
+    return res.status(500).json({ error: '暫時無法載入通知，請稍後再試。' });
+  }
+});
+
+// KLIKNIĘCIE POWIADOMIENIA OZNACZA WYŁĄCZNIE TĘ ODPOWIEDŹ JAKO PRZECZYTANĄ.
+app.patch('/api/me/notifications/:id/read', requireUser, async (req, res) => {
+  const replyId = Number(req.params.id);
+
+  if (!Number.isInteger(replyId) || replyId <= 0) {
+    return res.status(400).json({ error: '通知識別碼不正確。' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        UPDATE comments AS reply
+        SET reply_read_at = NOW()
+        FROM comments AS parent
+        WHERE reply.id = $1
+          AND parent.id = reply.parent_comment_id
+          AND parent.user_id = $2
+          AND reply.user_id <> $2
+        RETURNING reply.id
+      `,
+      [replyId, req.auth.userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '找不到這則通知。' });
+    }
+
+    return res.json({ status: 'ok', id: result.rows[0].id });
+  } catch (error) {
+    console.error('Unable to mark user notification as read:', error);
+    return res.status(500).json({ error: '暫時無法更新通知，請稍後再試。' });
   }
 });
 
@@ -1465,12 +1648,14 @@ async function startServer() {
         id BIGSERIAL PRIMARY KEY,
         opinion_id INTEGER NOT NULL REFERENCES opinions(id) ON DELETE CASCADE,
         user_id TEXT NOT NULL,
+        parent_comment_id BIGINT REFERENCES comments(id) ON DELETE CASCADE,
         comment_text TEXT NOT NULL CHECK (
           CHAR_LENGTH(comment_text) BETWEEN 1 AND 1000
         ),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         edited_at TIMESTAMPTZ,
-        admin_seen_at TIMESTAMPTZ
+        admin_seen_at TIMESTAMPTZ,
+        reply_read_at TIMESTAMPTZ
       )
     `);
     await pool.query(`
@@ -1480,6 +1665,15 @@ async function startServer() {
     await pool.query(`
       ALTER TABLE comments
       ADD COLUMN IF NOT EXISTS admin_seen_at TIMESTAMPTZ
+    `);
+    await pool.query(`
+      ALTER TABLE comments
+      ADD COLUMN IF NOT EXISTS parent_comment_id BIGINT
+      REFERENCES comments(id) ON DELETE CASCADE
+    `);
+    await pool.query(`
+      ALTER TABLE comments
+      ADD COLUMN IF NOT EXISTS reply_read_at TIMESTAMPTZ
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS comments_opinion_id_index
@@ -1497,6 +1691,15 @@ async function startServer() {
       CREATE INDEX IF NOT EXISTS comments_admin_unread_index
       ON comments (created_at DESC)
       WHERE admin_seen_at IS NULL
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS comments_parent_comment_id_index
+      ON comments (parent_comment_id, created_at, id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS comments_unread_replies_index
+      ON comments (parent_comment_id, created_at DESC)
+      WHERE parent_comment_id IS NOT NULL AND reply_read_at IS NULL
     `);
 
     app.listen(PORT, '0.0.0.0', () => {

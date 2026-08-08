@@ -15,7 +15,7 @@
       <header class="form-page-header account-page-header">
         <p class="eyebrow">Your cruise account</p>
         <h1 class="page-title">我的帳號</h1>
-        <p class="page-intro">登入後就能分享搭乘體驗、查看自己的評價並管理帳號。</p>
+        <p class="page-intro">登入後就能分享搭乘體驗、查看回覆，並管理自己的評價與帳號。</p>
       </header>
 
       <section class="account-card" aria-live="polite">
@@ -25,7 +25,7 @@
           <div class="account-deleted-icon" aria-hidden="true">✓</div>
           <p class="auth-step-label">Account deleted</p>
           <h2>帳號已刪除</h2>
-          <p>你的帳號與所有評價已永久刪除。若你之後想新增評價，可以建立新帳號。</p>
+          <p>你的帳號、所有評價與留言已永久刪除。若你之後想新增評價，可以建立新帳號。</p>
           <div class="account-deleted-actions">
             <button type="button" id="createAccountAfterDelete" class="add-button">建立新帳號</button>
             <a href="/" class="button">返回首頁</a>
@@ -162,6 +162,25 @@
             >×</button>
           </div>
 
+          <section class="account-section account-notifications" aria-labelledby="accountNotificationsHeading">
+            <div class="account-section-heading">
+              <div>
+                <p class="auth-step-label">Notifications</p>
+                <h3 id="accountNotificationsHeading">
+                  通知
+                  <span id="accountNotificationsCount" class="account-notifications-count" hidden>0</span>
+                </h3>
+              </div>
+            </div>
+
+            <p id="accountNotificationsLoading" class="account-reviews-loading">正在載入通知…</p>
+            <div id="accountNotificationsList" class="account-notifications-list" hidden></div>
+            <div id="accountNotificationsEmpty" class="account-empty-notifications" hidden>
+              <strong>目前沒有新通知</strong>
+              <p>當其他旅客回覆你的留言時，這裡會顯示通知。</p>
+            </div>
+          </section>
+
           <section class="account-section" aria-labelledby="myReviewsHeading">
             <div class="account-section-heading">
               <div>
@@ -222,7 +241,7 @@
             <div class="account-danger-zone">
               <div>
                 <h4>刪除帳號</h4>
-                <p>帳號與所有評價會永久刪除，而且無法復原。</p>
+                <p>帳號、所有評價與留言會永久刪除，而且無法復原。</p>
               </div>
               <button type="button" id="deleteAccountStart" class="button account-delete-start">刪除帳號</button>
 
@@ -233,7 +252,7 @@
                 </div>
                 <label class="terms-consent delete-confirmation" for="deleteAccountConfirm">
                   <input id="deleteAccountConfirm" type="checkbox" required>
-                  <span>我了解帳號與所有評價將永久刪除。</span>
+                  <span>我了解帳號、所有評價與留言將永久刪除。</span>
                 </label>
                 <div class="account-delete-actions">
                   <button type="submit" class="button account-delete-confirm">永久刪除帳號</button>

@@ -84,6 +84,10 @@ function createCommentsSection(opinion) {
   const section = document.createElement('section');
   const panelId = `review-${opinionId}-comments-panel`;
   const anchorId = `review-${opinionId}-comments`;
+  const targetMatch = window.location.hash.match(/^#review-(\d+)-comment-(\d+)$/);
+  const targetCommentId = targetMatch && Number(targetMatch[1]) === opinionId
+    ? targetMatch[2]
+    : '';
   let commentCount = Number(opinion.commentCount) || 0;
   let commentsLoaded = false;
   let composerLoaded = false;
@@ -147,9 +151,40 @@ function createCommentsSection(opinion) {
         return;
       }
 
+      const repliesByParent = new Map();
+      const rootComments = [];
+
       comments.forEach(comment => {
+        if (comment.parentCommentId == null) {
+          rootComments.push(comment);
+          return;
+        }
+
+        const parentKey = String(comment.parentCommentId);
+        const replies = repliesByParent.get(parentKey) || [];
+        replies.push(comment);
+        repliesByParent.set(parentKey, replies);
+      });
+
+      const highlightComment = commentId => {
+        if (!commentId) {
+          return;
+        }
+
+        const target = document.getElementById(`comment-${commentId}`);
+        if (!target) {
+          return;
+        }
+
+        target.classList.add('is-highlighted');
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.setTimeout(() => target.classList.remove('is-highlighted'), 3200);
+      };
+
+      const renderComment = (comment, { isReply = false, replyCount = 0 } = {}) => {
         const item = document.createElement('article');
-        item.className = 'review-comment';
+        item.className = `review-comment${isReply ? ' review-comment-reply' : ''}`;
+        item.id = `comment-${comment.id}`;
 
         const header = document.createElement('div');
         header.className = 'review-comment-header';
@@ -185,6 +220,98 @@ function createCommentsSection(opinion) {
 
         header.append(identity, meta);
         item.append(header, textElement);
+
+        if (comment.canReply && !isReply) {
+          const replyButton = document.createElement('button');
+          replyButton.type = 'button';
+          replyButton.className = 'review-comment-reply-button';
+          replyButton.textContent = '回覆';
+
+          replyButton.addEventListener('click', () => {
+            setMessage('');
+            actions.hidden = true;
+
+            const replyForm = document.createElement('form');
+            replyForm.className = 'review-comment-reply-form';
+            replyForm.appendChild(
+              createTextElement(
+                'label',
+                'review-comment-reply-label',
+                `回覆 ${comment.author || '郵輪旅人'}`
+              )
+            );
+
+            const textarea = document.createElement('textarea');
+            textarea.maxLength = 1000;
+            textarea.required = true;
+            textarea.placeholder = '寫下你的回覆…';
+            textarea.setAttribute('aria-label', `回覆 ${comment.author || '郵輪旅人'}`);
+
+            const replyActions = document.createElement('div');
+            replyActions.className = 'review-comment-edit-actions';
+
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.className = 'review-comment-edit-cancel';
+            cancelButton.textContent = '取消';
+
+            const submitButton = document.createElement('button');
+            submitButton.type = 'submit';
+            submitButton.className = 'review-comment-edit-save';
+            submitButton.textContent = '發布回覆';
+
+            const closeReplyForm = () => {
+              replyForm.remove();
+              actions.hidden = false;
+            };
+
+            cancelButton.addEventListener('click', closeReplyForm);
+
+            replyForm.addEventListener('submit', async event => {
+              event.preventDefault();
+              const text = textarea.value.trim();
+
+              if (!text) {
+                setMessage('請輸入回覆內容。', 'error');
+                textarea.focus();
+                return;
+              }
+
+              textarea.disabled = true;
+              cancelButton.disabled = true;
+              submitButton.disabled = true;
+              submitButton.textContent = '發布中…';
+              setMessage('發布中…');
+
+              try {
+                const savedReply = await commentApiRequest(
+                  `/api/comments/${comment.id}/replies`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                  }
+                );
+                await loadComments(true);
+                setMessage('回覆已發布。', 'success');
+                highlightComment(savedReply.id);
+              } catch (error) {
+                textarea.disabled = false;
+                cancelButton.disabled = false;
+                submitButton.disabled = false;
+                submitButton.textContent = '發布回覆';
+                setMessage(error.message, 'error');
+              }
+            });
+
+            replyActions.append(cancelButton, submitButton);
+            replyForm.append(textarea, replyActions);
+            item.insertBefore(replyForm, actions);
+            textarea.focus();
+          });
+
+          actions.appendChild(replyButton);
+        }
 
         if (comment.canEdit) {
           const editButton = document.createElement('button');
@@ -277,7 +404,11 @@ function createCommentsSection(opinion) {
           deleteButton.textContent = '刪除';
 
           deleteButton.addEventListener('click', async () => {
-            if (!window.confirm('確定要刪除這則留言嗎？\n刪除後無法復原。')) {
+            const confirmationText = replyCount > 0
+              ? `確定要刪除這則留言及其 ${replyCount} 則回覆嗎？\n刪除後無法復原。`
+              : '確定要刪除這則留言嗎？\n刪除後無法復原。';
+
+            if (!window.confirm(confirmationText)) {
               return;
             }
 
@@ -301,8 +432,28 @@ function createCommentsSection(opinion) {
           item.appendChild(actions);
         }
 
-        list.appendChild(item);
+        return item;
+      };
+
+      rootComments.forEach(comment => {
+        const replies = repliesByParent.get(String(comment.id)) || [];
+        const thread = document.createElement('div');
+        thread.className = 'review-comment-thread';
+        thread.appendChild(renderComment(comment, { replyCount: replies.length }));
+
+        if (replies.length > 0) {
+          const repliesContainer = document.createElement('div');
+          repliesContainer.className = 'review-comment-replies';
+          replies.forEach(reply => {
+            repliesContainer.appendChild(renderComment(reply, { isReply: true }));
+          });
+          thread.appendChild(repliesContainer);
+        }
+
+        list.appendChild(thread);
       });
+
+      highlightComment(targetCommentId);
     } catch (error) {
       list.replaceChildren(
         createTextElement('p', 'review-comments-error', error.message)
@@ -398,10 +549,12 @@ function createCommentsSection(opinion) {
   panel.append(list, composer, message);
   section.append(toggle, panel);
 
-  if (window.location.hash === `#${anchorId}`) {
+  if (window.location.hash === `#${anchorId}` || targetCommentId) {
     window.setTimeout(() => {
       toggle.click();
-      section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (!targetCommentId) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }, 0);
   }
 

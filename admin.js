@@ -219,6 +219,9 @@ function renderComments() {
 
     const headingMeta = document.createElement('div');
     headingMeta.className = 'comment-heading-meta';
+    if (comment.isReply) {
+      headingMeta.appendChild(textElement('span', 'comment-reply-label', '回覆'));
+    }
     if (comment.isNew) {
       headingMeta.appendChild(textElement('span', 'comment-new-label', '待查看'));
     }

@@ -237,10 +237,36 @@ async function updateNavigation(root = document) {
     const session = await getSession();
     const isLoggedIn = Boolean(session?.user);
     const isAccountPage = window.location.pathname.replace(/\/+$/, '') === '/account';
+    let unreadNotificationCount = 0;
+
+    if (isLoggedIn && session?.session?.token) {
+      try {
+        const response = await fetch('/api/me/notifications/unread-count', {
+          headers: { Authorization: `Bearer ${session.session.token}` }
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+          unreadNotificationCount = Math.max(0, Number(data.count) || 0);
+        }
+      } catch {
+        unreadNotificationCount = 0;
+      }
+    }
 
     links.forEach(link => {
       link.href = '/account';
       link.textContent = isLoggedIn ? '我的帳號' : '登入／註冊';
+      link.classList.toggle(
+        'has-unread-notifications',
+        isLoggedIn && unreadNotificationCount > 0
+      );
+      link.setAttribute(
+        'aria-label',
+        isLoggedIn && unreadNotificationCount > 0
+          ? `我的帳號，${unreadNotificationCount} 則新通知`
+          : (isLoggedIn ? '我的帳號' : '登入／註冊')
+      );
       link.hidden = isAccountPage;
     });
   } catch {
@@ -249,6 +275,8 @@ async function updateNavigation(root = document) {
     links.forEach(link => {
       link.href = '/account';
       link.textContent = '登入／註冊';
+      link.classList.remove('has-unread-notifications');
+      link.setAttribute('aria-label', '登入／註冊');
       link.hidden = isAccountPage;
     });
   }

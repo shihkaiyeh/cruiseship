@@ -11,6 +11,10 @@
   const reviewsMessage = document.getElementById('accountReviewsMessage');
   const reviewsList = document.getElementById('accountReviewsList');
   const reviewsEmpty = document.getElementById('accountReviewsEmpty');
+  const notificationsLoading = document.getElementById('accountNotificationsLoading');
+  const notificationsList = document.getElementById('accountNotificationsList');
+  const notificationsEmpty = document.getElementById('accountNotificationsEmpty');
+  const notificationsCount = document.getElementById('accountNotificationsCount');
   const accountBadge = document.getElementById('accountBadge');
   const accountBadgeProgress = document.getElementById('accountBadgeProgress');
   const badgeAchievement = document.getElementById('badgeAchievement');
@@ -187,6 +191,126 @@
     return company ? window.CruiseRoutes.lineUrl(company) : '/';
   }
 
+  function formatNotificationDate(value) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    return new Intl.DateTimeFormat('zh-TW', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  }
+
+  function notificationPublicUrl(notification) {
+    const baseUrl = reviewPublicUrl(notification);
+    return `${baseUrl}#review-${notification.opinionId}-comment-${notification.replyId}`;
+  }
+
+  function renderNotification(notification) {
+    const targetUrl = notificationPublicUrl(notification);
+    const card = createElement('a', 'account-notification-card');
+    card.href = targetUrl;
+
+    const heading = createElement('div', 'account-notification-heading');
+    heading.append(
+      createElement(
+        'strong',
+        '',
+        `${notification.author || '郵輪旅人'} 回覆了你的留言`
+      ),
+      createElement('time', '', formatNotificationDate(notification.createdAt))
+    );
+
+    const context = createElement(
+      'p',
+      'account-notification-context',
+      `評價：${notification.opinionTitle || '未命名評價'}`
+    );
+    const reply = createElement(
+      'p',
+      'account-notification-reply',
+      notification.text || ''
+    );
+    const original = createElement(
+      'p',
+      'account-notification-original',
+      `你的留言：${notification.originalText || ''}`
+    );
+    const action = createElement('span', 'account-notification-action', '查看回覆 →');
+    card.append(heading, context, reply, original, action);
+
+    card.addEventListener('click', async event => {
+      if (
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        (typeof event.button === 'number' && event.button !== 0)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      card.classList.add('is-opening');
+      action.textContent = '正在開啟…';
+
+      try {
+        await auth.authFetch(`/api/me/notifications/${notification.replyId}/read`, {
+          method: 'PATCH'
+        });
+      } catch (error) {
+        console.error('Unable to mark notification as read:', error);
+      } finally {
+        window.location.href = targetUrl;
+      }
+    });
+
+    return card;
+  }
+
+  function showNotificationsError(text) {
+    notificationsLoading.hidden = false;
+    notificationsLoading.textContent = text;
+    notificationsLoading.classList.add('error');
+    notificationsList.hidden = true;
+    notificationsEmpty.hidden = true;
+    notificationsCount.hidden = true;
+  }
+
+  async function loadNotifications() {
+    notificationsLoading.hidden = false;
+    notificationsLoading.textContent = '正在載入通知…';
+    notificationsLoading.classList.remove('error');
+    notificationsList.hidden = true;
+    notificationsEmpty.hidden = true;
+
+    try {
+      const response = await auth.authFetch('/api/me/notifications');
+      const data = await response.json().catch(() => []);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'NOTIFICATIONS_UNAVAILABLE');
+      }
+
+      const notifications = Array.isArray(data) ? data : [];
+      notificationsList.replaceChildren(...notifications.map(renderNotification));
+      notificationsCount.textContent = String(notifications.length);
+      notificationsCount.hidden = notifications.length === 0;
+      notificationsLoading.hidden = true;
+      notificationsList.hidden = notifications.length === 0;
+      notificationsEmpty.hidden = notifications.length !== 0;
+    } catch (error) {
+      console.error('Unable to load account notifications:', error);
+      showNotificationsError('暫時無法載入通知，請稍後再試。');
+    }
+  }
+
   function showReviewsMessage(text = '', type = 'success') {
     reviewsMessage.textContent = text;
     reviewsMessage.classList.toggle('error', type === 'error');
@@ -321,7 +445,7 @@
 
   async function activateProfile(session) {
     showProfile(session);
-    await loadMyOpinions();
+    await Promise.all([loadNotifications(), loadMyOpinions()]);
   }
 
   async function savePendingTermsAcceptance() {
@@ -618,7 +742,7 @@
     const password = document.getElementById('deleteAccountPassword').value;
 
     if (!document.getElementById('deleteAccountConfirm').checked) {
-      setMessage('請先確認你了解帳號與所有評價將永久刪除。');
+      setMessage('請先確認你了解帳號、所有評價與留言將永久刪除。');
       return;
     }
 
@@ -649,6 +773,8 @@
     try {
       await auth.signOut();
       reviewsList.replaceChildren();
+      notificationsList.replaceChildren();
+      notificationsCount.hidden = true;
       badgeAchievement.hidden = true;
       seenBadgeStorageKey = '';
       showPanel('login');
