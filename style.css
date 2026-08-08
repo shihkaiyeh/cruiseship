@@ -328,9 +328,42 @@ h3 {
   gap: 4px;
 }
 
-.sidebar-footer {
+.sidebar-account-link {
+  margin: 2px 0;
+  border: 1px solid rgba(229, 207, 154, 0.42);
+  border-radius: 7px;
+  color: #d6e0e6;
+}
+
+.sidebar-account-link:hover,
+.sidebar-account-link.active {
+  border-color: rgba(229, 207, 154, 0.72);
+}
+
+.sidebar-bottom {
+  display: grid;
+  gap: 8px;
   margin-top: auto;
   padding-top: 28px;
+}
+
+.sidebar-legal-link {
+  width: fit-content;
+  color: #657d8c;
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+}
+
+.sidebar-legal-link:hover,
+.sidebar-legal-link.active {
+  color: #93a7b3;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sidebar-footer {
+  margin: 0;
   color: #718897;
   font-size: 11px;
   letter-spacing: 0.05em;
@@ -1118,6 +1151,22 @@ h3 {
 .field-help {
   color: var(--muted);
   font-size: 12px;
+}
+
+.review-author-field {
+  align-self: end;
+}
+
+.review-publish-as {
+  margin: 0;
+  padding: 13px 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.review-publish-as strong {
+  color: var(--navy-800);
+  font-weight: 700;
 }
 
 .field-full {

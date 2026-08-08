@@ -183,8 +183,7 @@ reviewForm.addEventListener('submit', async event => {
       room: Number(document.getElementById('room').value),
       service: Number(document.getElementById('service').value),
       food: Number(document.getElementById('food').value)
-    },
-    author: document.getElementById('author').value.trim()
+    }
   };
 
   submitButton.disabled = true;
@@ -243,9 +242,7 @@ async function initializeReviewForm() {
     return;
   }
 
-  const authorInput = document.getElementById('author');
-  authorInput.value = currentSession.user.name || '';
-  authorInput.readOnly = Boolean(currentSession.user.name);
+  document.getElementById('reviewAuthorName').textContent = currentSession.user.name;
   loginRequired.hidden = true;
 
   if (routeSegments[0] === 'edit-review' && !isEditMode) {

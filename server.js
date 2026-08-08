@@ -131,7 +131,7 @@ function opinionInputFromRequest(req) {
       service: Number(ratings.service),
       food: Number(ratings.food)
     },
-    author: profileName || cleanText(body.author, 60)
+    author: profileName
   };
 }
 
