@@ -209,10 +209,13 @@
 
   function notificationPublicUrl(notification) {
     const baseUrl = reviewPublicUrl(notification);
-    return `${baseUrl}#review-${notification.opinionId}-comment-${notification.replyId}`;
+    const commentId = notification.commentId || notification.replyId;
+    return `${baseUrl}#review-${notification.opinionId}-comment-${commentId}`;
   }
 
   function renderNotification(notification) {
+    const isReply = notification.type !== 'comment';
+    const notificationId = notification.id || notification.commentId || notification.replyId;
     const targetUrl = notificationPublicUrl(notification);
     const card = createElement('a', 'account-notification-card');
     card.href = targetUrl;
@@ -222,7 +225,9 @@
       createElement(
         'strong',
         '',
-        `${notification.author || '郵輪旅人'} 回覆了你的留言`
+        isReply
+          ? `${notification.author || '郵輪旅人'} 回覆了你的留言`
+          : `${notification.author || '郵輪旅人'} 在你的評價下留言`
       ),
       createElement('time', '', formatNotificationDate(notification.createdAt))
     );
@@ -237,13 +242,22 @@
       'account-notification-reply',
       notification.text || ''
     );
-    const original = createElement(
-      'p',
-      'account-notification-original',
-      `你的留言：${notification.originalText || ''}`
+    const action = createElement(
+      'span',
+      'account-notification-action',
+      isReply ? '查看回覆 →' : '查看留言 →'
     );
-    const action = createElement('span', 'account-notification-action', '查看回覆 →');
-    card.append(heading, context, reply, original, action);
+    card.append(heading, context, reply);
+
+    if (isReply) {
+      card.append(createElement(
+        'p',
+        'account-notification-original',
+        `你的留言：${notification.originalText || ''}`
+      ));
+    }
+
+    card.append(action);
 
     card.addEventListener('click', async event => {
       if (
@@ -261,7 +275,7 @@
       action.textContent = '正在開啟…';
 
       try {
-        await auth.authFetch(`/api/me/notifications/${notification.replyId}/read`, {
+        await auth.authFetch(`/api/me/notifications/${notificationId}/read`, {
           method: 'PATCH'
         });
       } catch (error) {

@@ -28,16 +28,21 @@ Co zostało dodane:
    - na komentarz główny można odpowiedzieć przyciskiem „回覆”;
    - odpowiedzi są lekko wcięte i nie można odpowiadać na odpowiedź,
      dlatego system nigdy nie tworzy więcej niż jednego poziomu;
+   - odpowiedzi są domyślnie ukryte pod przyciskiem „查看 N 則回覆”;
+   - wejście z powiadomienia automatycznie rozwija odpowiedzi;
    - administrator może usunąć dowolny komentarz.
 
-7. Powiadomienia o odpowiedziach:
+7. Powiadomienia o komentarzach i odpowiedziach:
+   - autor opinii otrzymuje powiadomienie, gdy inna osoba doda pod nią
+     nowy komentarz główny;
    - autor komentarza otrzymuje powiadomienie, gdy odpowie mu inna osoba;
    - przy „我的帳號” pojawia się jasnozielona kropka;
-   - nowe odpowiedzi są widoczne w sekcji „通知” na stronie konta;
+   - nowe komentarze i odpowiedzi są widoczne w sekcji „通知” na stronie konta;
    - kliknięcie powiadomienia oznacza je jako przeczytane bez dodatkowego
      potwierdzenia, otwiera właściwą opinię, rozwija komentarze i podświetla
      konkretną odpowiedź;
-   - odpowiedź na własny komentarz nie tworzy powiadomienia.
+   - własny komentarz pod własną opinią ani odpowiedź na własny komentarz
+     nie tworzą powiadomienia.
 
 8. W panelu administratora znajduje się sekcja „留言”:
    - licznik informuje o nowych komentarzach;

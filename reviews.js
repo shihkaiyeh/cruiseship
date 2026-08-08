@@ -133,6 +133,12 @@ function createCommentsSection(opinion) {
       return;
     }
 
+    const expandedReplyParentIds = new Set(
+      [...list.querySelectorAll('.review-comment-replies:not([hidden])')]
+        .map(container => container.dataset.parentCommentId)
+        .filter(Boolean)
+    );
+
     list.replaceChildren(
       createTextElement('p', 'review-comments-loading', '正在載入留言…')
     );
@@ -166,6 +172,15 @@ function createCommentsSection(opinion) {
         repliesByParent.set(parentKey, replies);
       });
 
+      const setRepliesExpanded = (button, container, expanded) => {
+        const replyCount = Number(button.dataset.replyCount) || 0;
+        container.hidden = !expanded;
+        button.setAttribute('aria-expanded', String(expanded));
+        button.textContent = expanded
+          ? '隱藏回覆'
+          : `查看 ${replyCount} 則回覆`;
+      };
+
       const highlightComment = commentId => {
         if (!commentId) {
           return;
@@ -174,6 +189,17 @@ function createCommentsSection(opinion) {
         const target = document.getElementById(`comment-${commentId}`);
         if (!target) {
           return;
+        }
+
+        const repliesContainer = target.closest('.review-comment-replies');
+        if (repliesContainer?.hidden) {
+          const repliesToggle = repliesContainer
+            .closest('.review-comment-thread')
+            ?.querySelector('.review-comment-replies-toggle');
+
+          if (repliesToggle) {
+            setRepliesExpanded(repliesToggle, repliesContainer, true);
+          }
         }
 
         target.classList.add('is-highlighted');
@@ -442,12 +468,28 @@ function createCommentsSection(opinion) {
         thread.appendChild(renderComment(comment, { replyCount: replies.length }));
 
         if (replies.length > 0) {
+          const repliesToggle = document.createElement('button');
+          const repliesId = `comment-${comment.id}-replies`;
+          repliesToggle.type = 'button';
+          repliesToggle.className = 'review-comment-replies-toggle';
+          repliesToggle.dataset.replyCount = String(replies.length);
+          repliesToggle.setAttribute('aria-controls', repliesId);
+
           const repliesContainer = document.createElement('div');
           repliesContainer.className = 'review-comment-replies';
+          repliesContainer.id = repliesId;
+          repliesContainer.dataset.parentCommentId = String(comment.id);
           replies.forEach(reply => {
             repliesContainer.appendChild(renderComment(reply, { isReply: true }));
           });
-          thread.appendChild(repliesContainer);
+
+          const initiallyExpanded = expandedReplyParentIds.has(String(comment.id));
+          setRepliesExpanded(repliesToggle, repliesContainer, initiallyExpanded);
+          repliesToggle.addEventListener('click', () => {
+            const expanded = repliesToggle.getAttribute('aria-expanded') === 'true';
+            setRepliesExpanded(repliesToggle, repliesContainer, !expanded);
+          });
+          thread.append(repliesToggle, repliesContainer);
         }
 
         list.appendChild(thread);

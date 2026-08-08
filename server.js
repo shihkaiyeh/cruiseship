@@ -1012,22 +1012,33 @@ app.delete('/api/comments/:id', optionalUser, async (req, res) => {
   }
 });
 
-// LICZNIK NIEPRZECZYTANYCH ODPOWIEDZI DLA ZALOGOWANEGO UŻYTKOWNIKA.
+// LICZNIK NOWYCH KOMENTARZY POD WŁASNĄ OPINIĄ I ODPOWIEDZI NA WŁASNE KOMENTARZE.
 app.get('/api/me/notifications/unread-count', requireUser, async (req, res) => {
   try {
     const result = await pool.query(
       `
         SELECT COUNT(*)::INTEGER AS count
-        FROM comments AS reply
-        INNER JOIN comments AS parent
-          ON parent.id = reply.parent_comment_id
+        FROM comments AS notice
         INNER JOIN opinions
-          ON opinions.id = reply.opinion_id
-        WHERE parent.user_id = $1
-          AND reply.user_id <> $1
-          AND reply.reply_read_at IS NULL
-          AND opinions.status = 'approved'
+          ON opinions.id = notice.opinion_id
+        LEFT JOIN comments AS parent
+          ON parent.id = notice.parent_comment_id
+        WHERE opinions.status = 'approved'
           AND opinions.deleted_at IS NULL
+          AND notice.user_id <> $1
+          AND (
+            (
+              notice.parent_comment_id IS NULL
+              AND opinions.user_id = $1
+              AND notice.opinion_owner_read_at IS NULL
+            )
+            OR
+            (
+              notice.parent_comment_id IS NOT NULL
+              AND parent.user_id = $1
+              AND notice.reply_read_at IS NULL
+            )
+          )
       `,
       [req.auth.userId]
     );
@@ -1039,43 +1050,61 @@ app.get('/api/me/notifications/unread-count', requireUser, async (req, res) => {
   }
 });
 
-// NIEPRZECZYTANE ODPOWIEDZI W PANELU KONTA.
+// NOWE KOMENTARZE POD WŁASNĄ OPINIĄ I ODPOWIEDZI W PANELU KONTA.
 app.get('/api/me/notifications', requireUser, async (req, res) => {
   try {
     const result = await pool.query(
       `
         SELECT
-          reply.id AS reply_id,
-          reply.opinion_id,
-          reply.comment_text AS reply_text,
-          reply.created_at,
-          COALESCE(reply_profile.display_name, '郵輪旅人') AS reply_author,
+          notice.id AS notification_id,
+          CASE
+            WHEN notice.parent_comment_id IS NULL THEN 'comment'
+            ELSE 'reply'
+          END AS notification_type,
+          notice.opinion_id,
+          notice.comment_text AS notification_text,
+          notice.created_at,
+          COALESCE(notice_profile.display_name, '郵輪旅人') AS notification_author,
           parent.comment_text AS original_text,
           opinions.title AS opinion_title,
           opinions.line,
           opinions.ship
-        FROM comments AS reply
-        INNER JOIN comments AS parent
-          ON parent.id = reply.parent_comment_id
+        FROM comments AS notice
         INNER JOIN opinions
-          ON opinions.id = reply.opinion_id
-        LEFT JOIN user_profiles AS reply_profile
-          ON reply_profile.user_id = reply.user_id
-        WHERE parent.user_id = $1
-          AND reply.user_id <> $1
-          AND reply.reply_read_at IS NULL
-          AND opinions.status = 'approved'
+          ON opinions.id = notice.opinion_id
+        LEFT JOIN comments AS parent
+          ON parent.id = notice.parent_comment_id
+        LEFT JOIN user_profiles AS notice_profile
+          ON notice_profile.user_id = notice.user_id
+        WHERE opinions.status = 'approved'
           AND opinions.deleted_at IS NULL
-        ORDER BY reply.created_at DESC, reply.id DESC
+          AND notice.user_id <> $1
+          AND (
+            (
+              notice.parent_comment_id IS NULL
+              AND opinions.user_id = $1
+              AND notice.opinion_owner_read_at IS NULL
+            )
+            OR
+            (
+              notice.parent_comment_id IS NOT NULL
+              AND parent.user_id = $1
+              AND notice.reply_read_at IS NULL
+            )
+          )
+        ORDER BY notice.created_at DESC, notice.id DESC
       `,
       [req.auth.userId]
     );
 
     return res.json(result.rows.map(row => ({
-      replyId: row.reply_id,
+      id: row.notification_id,
+      type: row.notification_type,
+      commentId: row.notification_id,
+      replyId: row.notification_type === 'reply' ? row.notification_id : null,
       opinionId: row.opinion_id,
-      author: row.reply_author,
-      text: row.reply_text,
+      author: row.notification_author,
+      text: row.notification_text,
       originalText: row.original_text,
       opinionTitle: row.opinion_title,
       line: row.line,
@@ -1088,27 +1117,60 @@ app.get('/api/me/notifications', requireUser, async (req, res) => {
   }
 });
 
-// KLIKNIĘCIE POWIADOMIENIA OZNACZA WYŁĄCZNIE TĘ ODPOWIEDŹ JAKO PRZECZYTANĄ.
+// KLIKNIĘCIE OZNACZA WYŁĄCZNIE TEN KOMENTARZ LUB ODPOWIEDŹ JAKO PRZECZYTANE.
 app.patch('/api/me/notifications/:id/read', requireUser, async (req, res) => {
-  const replyId = Number(req.params.id);
+  const notificationId = Number(req.params.id);
 
-  if (!Number.isInteger(replyId) || replyId <= 0) {
+  if (!Number.isInteger(notificationId) || notificationId <= 0) {
     return res.status(400).json({ error: '通知識別碼不正確。' });
   }
 
   try {
     const result = await pool.query(
       `
-        UPDATE comments AS reply
-        SET reply_read_at = NOW()
-        FROM comments AS parent
-        WHERE reply.id = $1
-          AND parent.id = reply.parent_comment_id
-          AND parent.user_id = $2
-          AND reply.user_id <> $2
-        RETURNING reply.id
+        UPDATE comments AS notice
+        SET
+          opinion_owner_read_at = CASE
+            WHEN notice.parent_comment_id IS NULL THEN NOW()
+            ELSE notice.opinion_owner_read_at
+          END,
+          reply_read_at = CASE
+            WHEN notice.parent_comment_id IS NOT NULL THEN NOW()
+            ELSE notice.reply_read_at
+          END
+        WHERE notice.id = $1
+          AND notice.user_id <> $2
+          AND EXISTS (
+            SELECT 1
+            FROM opinions
+            WHERE opinions.id = notice.opinion_id
+              AND opinions.status = 'approved'
+              AND opinions.deleted_at IS NULL
+          )
+          AND (
+            (
+              notice.parent_comment_id IS NULL
+              AND EXISTS (
+                SELECT 1
+                FROM opinions AS owned_opinion
+                WHERE owned_opinion.id = notice.opinion_id
+                  AND owned_opinion.user_id = $2
+              )
+            )
+            OR
+            (
+              notice.parent_comment_id IS NOT NULL
+              AND EXISTS (
+                SELECT 1
+                FROM comments AS parent
+                WHERE parent.id = notice.parent_comment_id
+                  AND parent.user_id = $2
+              )
+            )
+          )
+        RETURNING notice.id
       `,
-      [replyId, req.auth.userId]
+      [notificationId, req.auth.userId]
     );
 
     if (result.rowCount === 0) {
@@ -1655,7 +1717,8 @@ async function startServer() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         edited_at TIMESTAMPTZ,
         admin_seen_at TIMESTAMPTZ,
-        reply_read_at TIMESTAMPTZ
+        reply_read_at TIMESTAMPTZ,
+        opinion_owner_read_at TIMESTAMPTZ
       )
     `);
     await pool.query(`
@@ -1674,6 +1737,15 @@ async function startServer() {
     await pool.query(`
       ALTER TABLE comments
       ADD COLUMN IF NOT EXISTS reply_read_at TIMESTAMPTZ
+    `);
+    // Stare komentarze nie mogą nagle pojawić się jako nowe powiadomienia po wdrożeniu.
+    await pool.query(`
+      ALTER TABLE comments
+      ADD COLUMN IF NOT EXISTS opinion_owner_read_at TIMESTAMPTZ DEFAULT NOW()
+    `);
+    await pool.query(`
+      ALTER TABLE comments
+      ALTER COLUMN opinion_owner_read_at DROP DEFAULT
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS comments_opinion_id_index
@@ -1700,6 +1772,12 @@ async function startServer() {
       CREATE INDEX IF NOT EXISTS comments_unread_replies_index
       ON comments (parent_comment_id, created_at DESC)
       WHERE parent_comment_id IS NOT NULL AND reply_read_at IS NULL
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS comments_unread_opinion_owner_index
+      ON comments (opinion_id, created_at DESC)
+      WHERE parent_comment_id IS NULL
+        AND opinion_owner_read_at IS NULL
     `);
 
     app.listen(PORT, '0.0.0.0', () => {
