@@ -669,41 +669,56 @@ app.delete('/api/admin/opinions/:id/permanent', requireAdmin, async (req, res) =
   }
 });
 
-// POBIERANIE ZATWIERDZONYCH OPINII
-app.get('/api/opinions', async (req, res) => {
+// POBIERANIE ZATWIERDZONYCH OPINII — z licznikiem „有幫助” i stanem widza.
+app.get('/api/opinions', optionalUser, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT
-        opinions.id,
-        opinions.line,
-        opinions.ship,
-        TO_CHAR(opinions.cruise_date, 'YYYY-MM-DD') AS date,
-        COALESCE(user_profiles.display_name, opinions.author) AS author,
-        opinions.title,
-        opinions.review_text AS text,
-        opinions.rating_decor,
-        opinions.rating_room,
-        opinions.rating_service,
-        opinions.rating_food,
-        CASE
-          WHEN opinions.user_id IS NULL THEN 0
-          ELSE COUNT(*) OVER (PARTITION BY opinions.user_id)
-        END AS approved_review_count,
-        COALESCE(comment_stats.comment_count, 0) AS comment_count,
-        opinions.created_at
-      FROM opinions
-      LEFT JOIN user_profiles
-        ON user_profiles.user_id = opinions.user_id
-      LEFT JOIN (
-        SELECT opinion_id, COUNT(*)::INTEGER AS comment_count
-        FROM comments
-        GROUP BY opinion_id
-      ) AS comment_stats
-        ON comment_stats.opinion_id = opinions.id
-      WHERE opinions.status = 'approved'
-        AND opinions.deleted_at IS NULL
-      ORDER BY opinions.created_at DESC, opinions.id DESC
-    `);
+    const result = await pool.query(
+      `
+        SELECT
+          opinions.id,
+          opinions.line,
+          opinions.ship,
+          TO_CHAR(opinions.cruise_date, 'YYYY-MM-DD') AS date,
+          COALESCE(user_profiles.display_name, opinions.author) AS author,
+          opinions.user_id AS author_user_id,
+          opinions.title,
+          opinions.review_text AS text,
+          opinions.rating_decor,
+          opinions.rating_room,
+          opinions.rating_service,
+          opinions.rating_food,
+          CASE
+            WHEN opinions.user_id IS NULL THEN 0
+            ELSE COUNT(*) OVER (PARTITION BY opinions.user_id)
+          END AS approved_review_count,
+          COALESCE(comment_stats.comment_count, 0) AS comment_count,
+          COALESCE(helpful_stats.helpful_count, 0) AS helpful_count,
+          viewer_helpful.user_id IS NOT NULL AS viewer_found_helpful,
+          opinions.created_at
+        FROM opinions
+        LEFT JOIN user_profiles
+          ON user_profiles.user_id = opinions.user_id
+        LEFT JOIN (
+          SELECT opinion_id, COUNT(*)::INTEGER AS comment_count
+          FROM comments
+          GROUP BY opinion_id
+        ) AS comment_stats
+          ON comment_stats.opinion_id = opinions.id
+        LEFT JOIN (
+          SELECT opinion_id, COUNT(*)::INTEGER AS helpful_count
+          FROM opinion_helpful_votes
+          GROUP BY opinion_id
+        ) AS helpful_stats
+          ON helpful_stats.opinion_id = opinions.id
+        LEFT JOIN opinion_helpful_votes AS viewer_helpful
+          ON viewer_helpful.opinion_id = opinions.id
+          AND viewer_helpful.user_id = $1
+        WHERE opinions.status = 'approved'
+          AND opinions.deleted_at IS NULL
+        ORDER BY opinions.created_at DESC, opinions.id DESC
+      `,
+      [req.auth?.userId || null]
+    );
 
     const opinions = result.rows.map(row => {
       const approvedReviewCount = Number(row.approved_review_count) || 0;
@@ -725,6 +740,11 @@ app.get('/api/opinions', async (req, res) => {
         approvedReviewCount,
         badge: reviewBadgeForCount(approvedReviewCount),
         commentCount: Number(row.comment_count) || 0,
+        helpfulCount: Number(row.helpful_count) || 0,
+        viewerFoundHelpful: Boolean(row.viewer_found_helpful),
+        viewerIsAuthor: Boolean(
+          req.auth?.userId && row.author_user_id === req.auth.userId
+        ),
         createdAt: row.created_at
       };
     });
@@ -735,6 +755,113 @@ app.get('/api/opinions', async (req, res) => {
     return res.status(500).json({
       error: '暫時無法載入評價，請稍後再試。'
     });
+  }
+});
+
+async function helpfulStateForOpinion(opinionId, userId) {
+  const result = await pool.query(
+    `
+      SELECT
+        COUNT(opinion_helpful_votes.user_id)::INTEGER AS helpful_count,
+        COUNT(
+          CASE WHEN opinion_helpful_votes.user_id = $2 THEN 1 END
+        ) > 0 AS viewer_found_helpful
+      FROM opinions
+      LEFT JOIN opinion_helpful_votes
+        ON opinion_helpful_votes.opinion_id = opinions.id
+      WHERE opinions.id = $1
+        AND opinions.status = 'approved'
+        AND opinions.deleted_at IS NULL
+        AND (opinions.user_id IS NULL OR opinions.user_id <> $2)
+      GROUP BY opinions.id
+    `,
+    [opinionId, userId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return {
+    helpfulCount: Number(result.rows[0].helpful_count) || 0,
+    viewerFoundHelpful: Boolean(result.rows[0].viewer_found_helpful)
+  };
+}
+
+// DODANIE „有幫助” — jeden głos na konto, bez głosowania na własną opinię.
+app.put('/api/opinions/:id/helpful', requireUser, async (req, res) => {
+  const opinionId = Number(req.params.id);
+
+  if (!Number.isInteger(opinionId) || opinionId <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  try {
+    const displayName = await syncUserProfile(req.auth);
+
+    if (!displayName) {
+      return res.status(400).json({ error: '帳號顯示名稱不正確。' });
+    }
+
+    await pool.query(
+      `
+        INSERT INTO opinion_helpful_votes (opinion_id, user_id)
+        SELECT opinions.id, $2
+        FROM opinions
+        WHERE opinions.id = $1
+          AND opinions.status = 'approved'
+          AND opinions.deleted_at IS NULL
+          AND (opinions.user_id IS NULL OR opinions.user_id <> $2)
+        ON CONFLICT (opinion_id, user_id) DO NOTHING
+      `,
+      [opinionId, req.auth.userId]
+    );
+
+    const state = await helpfulStateForOpinion(opinionId, req.auth.userId);
+
+    if (!state) {
+      return res.status(403).json({
+        error: '找不到這則公開評價，或你不能標記自己的評價。'
+      });
+    }
+
+    return res.json({ status: 'ok', ...state });
+  } catch (error) {
+    console.error('Unable to mark opinion as helpful:', error);
+    return res.status(500).json({ error: '暫時無法更新有幫助標記，請稍後再試。' });
+  }
+});
+
+// COFNIĘCIE „有幫助” PRZEZ TO SAMO KONTO.
+app.delete('/api/opinions/:id/helpful', requireUser, async (req, res) => {
+  const opinionId = Number(req.params.id);
+
+  if (!Number.isInteger(opinionId) || opinionId <= 0) {
+    return res.status(400).json({ error: '評價識別碼不正確。' });
+  }
+
+  try {
+    await pool.query(
+      `
+        DELETE FROM opinion_helpful_votes
+        WHERE opinion_helpful_votes.opinion_id = $1
+          AND opinion_helpful_votes.user_id = $2
+      `,
+      [opinionId, req.auth.userId]
+    );
+
+    const state = await helpfulStateForOpinion(opinionId, req.auth.userId);
+
+    if (!state) {
+      return res.status(403).json({
+        error: '找不到這則公開評價，或你不能標記自己的評價。'
+      });
+    }
+
+    return res.json({ status: 'ok', ...state });
+  } catch (error) {
+    console.error('Unable to remove helpful mark from opinion:', error);
+    return res.status(500).json({ error: '暫時無法更新有幫助標記，請稍後再試。' });
   }
 });
 
@@ -1704,6 +1831,18 @@ async function startServer() {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS opinions_deleted_at_index
       ON opinions (deleted_at)
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS opinion_helpful_votes (
+        opinion_id INTEGER NOT NULL REFERENCES opinions(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES user_profiles(user_id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (opinion_id, user_id)
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS opinion_helpful_votes_user_id_index
+      ON opinion_helpful_votes (user_id)
     `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (

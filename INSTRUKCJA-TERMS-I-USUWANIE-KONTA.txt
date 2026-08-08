@@ -32,6 +32,12 @@ Co zostało dodane:
    - wejście z powiadomienia automatycznie rozwija odpowiedzi;
    - administrator może usunąć dowolny komentarz.
 
+   Pod każdą publiczną opinią znajduje się także przycisk „有幫助”:
+   - licznik jest widoczny dla wszystkich;
+   - zalogowana osoba może dodać jeden głos i później go cofnąć;
+   - nie można oznaczyć własnej opinii jako pomocnej;
+   - nie ma negatywnych głosów ani sortowania po liczbie głosów.
+
 7. Powiadomienia o komentarzach i odpowiedziach:
    - autor opinii otrzymuje powiadomienie, gdy inna osoba doda pod nią
      nowy komentarz główny;

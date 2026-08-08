@@ -47,7 +47,7 @@ function getViewerSession() {
   return viewerSessionPromise;
 }
 
-async function commentApiRequest(url, options = {}) {
+async function viewerApiRequest(url, options = {}) {
   const session = await getViewerSession();
   const response = session?.user
     ? await window.CruiseAuth.authFetch(url, options)
@@ -144,7 +144,7 @@ function createCommentsSection(opinion) {
     );
 
     try {
-      const comments = await commentApiRequest(`/api/opinions/${opinionId}/comments`);
+      const comments = await viewerApiRequest(`/api/opinions/${opinionId}/comments`);
       commentCount = comments.length;
       commentsLoaded = true;
       updateToggle();
@@ -310,7 +310,7 @@ function createCommentsSection(opinion) {
               setMessage('發布中…');
 
               try {
-                const savedReply = await commentApiRequest(
+                const savedReply = await viewerApiRequest(
                   `/api/comments/${comment.id}/replies`,
                   {
                     method: 'POST',
@@ -397,7 +397,7 @@ function createCommentsSection(opinion) {
               setMessage('儲存中…');
 
               try {
-                await commentApiRequest(`/api/comments/${comment.id}`, {
+                await viewerApiRequest(`/api/comments/${comment.id}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ text })
@@ -442,7 +442,7 @@ function createCommentsSection(opinion) {
             setMessage('刪除中…');
 
             try {
-              await commentApiRequest(`/api/comments/${comment.id}`, { method: 'DELETE' });
+              await viewerApiRequest(`/api/comments/${comment.id}`, { method: 'DELETE' });
               await loadComments(true);
               setMessage('留言已刪除。', 'success');
             } catch (error) {
@@ -559,7 +559,7 @@ function createCommentsSection(opinion) {
       setMessage('');
 
       try {
-        await commentApiRequest(`/api/opinions/${opinionId}/comments`, {
+        await viewerApiRequest(`/api/opinions/${opinionId}/comments`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text })
@@ -603,9 +603,75 @@ function createCommentsSection(opinion) {
   return section;
 }
 
+function createHelpfulSection(opinion) {
+  const opinionId = Number(opinion.id);
+  const section = document.createElement('div');
+  const button = document.createElement('button');
+  const icon = createTextElement('span', 'review-helpful-icon', '👍');
+  const label = createTextElement('span', 'review-helpful-label', '有幫助');
+  const count = createTextElement('span', 'review-helpful-count', '');
+  const message = createTextElement('span', 'review-helpful-message', '');
+  let helpfulCount = Number(opinion.helpfulCount) || 0;
+  let isActive = Boolean(opinion.viewerFoundHelpful);
+  let isPending = false;
+
+  section.className = 'review-helpful';
+  button.type = 'button';
+  button.className = 'review-helpful-button';
+  message.setAttribute('role', 'status');
+  message.setAttribute('aria-live', 'polite');
+  button.append(icon, label, count);
+
+  const renderState = () => {
+    count.textContent = `（${helpfulCount}）`;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+    button.disabled = isPending || Boolean(opinion.viewerIsAuthor);
+    button.title = opinion.viewerIsAuthor ? '不能標記自己的評價' : '';
+  };
+
+  renderState();
+
+  button.addEventListener('click', async () => {
+    const session = await getViewerSession();
+
+    if (!session?.user) {
+      const returnTo = [
+        window.location.pathname,
+        window.location.search,
+        `#review-${opinionId}`
+      ].join('');
+      window.location.href = `/account?returnTo=${encodeURIComponent(returnTo)}`;
+      return;
+    }
+
+    isPending = true;
+    message.textContent = '正在更新…';
+    renderState();
+
+    try {
+      const state = await viewerApiRequest(`/api/opinions/${opinionId}/helpful`, {
+        method: isActive ? 'DELETE' : 'PUT'
+      });
+      helpfulCount = Number(state.helpfulCount) || 0;
+      isActive = Boolean(state.viewerFoundHelpful);
+      message.textContent = isActive ? '已標記' : '已取消';
+    } catch (error) {
+      message.textContent = error.message || '暫時無法更新。';
+    } finally {
+      isPending = false;
+      renderState();
+    }
+  });
+
+  section.append(button, message);
+  return section;
+}
+
 function createReviewCard(opinion) {
   const review = document.createElement('article');
   review.className = 'review';
+  review.id = `review-${opinion.id}`;
 
   review.appendChild(createTextElement('h3', '', opinion.title || ''));
 
@@ -690,6 +756,7 @@ function createReviewCard(opinion) {
     review.appendChild(toggleTextButton);
   }
 
+  review.appendChild(createHelpfulSection(opinion));
   review.appendChild(createCommentsSection(opinion));
 
   return review;
@@ -764,19 +831,22 @@ function renderReviews(opinions, options = {}) {
   opinions.forEach(opinion => {
     container.appendChild(createReviewCard(opinion));
   });
+
+  if (/^#review-\d+$/.test(window.location.hash)) {
+    window.setTimeout(() => {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 0);
+  }
 }
 
 async function loadReviews(filter, options = {}) {
   const container = document.getElementById('reviews');
 
   try {
-    const response = await fetch('/api/opinions');
-
-    if (!response.ok) {
-      throw new Error('無法載入評價');
-    }
-
-    const opinions = await response.json();
+    const opinions = await viewerApiRequest('/api/opinions');
     const filteredOpinions = opinions.filter(filter);
 
     renderReviews(filteredOpinions, options);
