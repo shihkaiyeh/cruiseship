@@ -112,6 +112,9 @@ function createCommentsSection(opinion) {
   panel.id = panelId;
   panel.hidden = true;
 
+  const toolbar = document.createElement('div');
+  toolbar.className = 'review-interactions-toolbar';
+
   const list = document.createElement('div');
   list.className = 'review-comments-list';
 
@@ -588,8 +591,9 @@ function createCommentsSection(opinion) {
     }
   });
 
+  toolbar.append(toggle, createHelpfulSection(opinion));
   panel.append(list, composer, message);
-  section.append(toggle, panel);
+  section.append(toolbar, panel);
 
   if (window.location.hash === `#${anchorId}` || targetCommentId) {
     window.setTimeout(() => {
@@ -756,7 +760,6 @@ function createReviewCard(opinion) {
     review.appendChild(toggleTextButton);
   }
 
-  review.appendChild(createHelpfulSection(opinion));
   review.appendChild(createCommentsSection(opinion));
 
   return review;

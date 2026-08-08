@@ -1165,7 +1165,7 @@ h3 {
   min-height: 42px;
   align-items: center;
   gap: 11px;
-  margin-top: 2px;
+  justify-self: end;
 }
 
 .review-helpful-button {
@@ -1230,6 +1230,13 @@ h3 {
   margin-top: 8px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
+}
+
+.review-interactions-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .review-comments-toggle {
