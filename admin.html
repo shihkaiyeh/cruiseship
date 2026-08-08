@@ -32,22 +32,44 @@
     <section id="moderationView" class="admin-panel" hidden>
       <header class="admin-header">
         <div>
-          <h1>評價審核</h1>
-          <p>新提交的評價正在等待你的審核。</p>
+          <h1>內容管理</h1>
+          <p>審核評價並在同一個地方管理網站留言。</p>
         </div>
         <button type="button" id="logoutButton" class="secondary-button">登出</button>
       </header>
 
-      <nav class="filters" aria-label="評價篩選">
-        <button type="button" data-filter="pending" class="active">待審核</button>
-        <button type="button" data-filter="approved">已通過</button>
-        <button type="button" data-filter="rejected">已拒絕</button>
-        <button type="button" data-filter="all">全部</button>
-        <button type="button" data-filter="deleted">回收桶</button>
+      <nav class="admin-sections" aria-label="管理區">
+        <button type="button" data-admin-view="opinions" class="active">評價</button>
+        <button type="button" data-admin-view="comments">
+          留言
+          <span id="newCommentsBadge" class="new-comments-badge" hidden>0</span>
+        </button>
       </nav>
 
-      <p id="moderationMessage" class="message" role="status"></p>
-      <div id="opinionsList"></div>
+      <section id="opinionsView">
+        <nav class="filters" aria-label="評價篩選">
+          <button type="button" data-filter="pending" class="active">待審核</button>
+          <button type="button" data-filter="approved">已通過</button>
+          <button type="button" data-filter="rejected">已拒絕</button>
+          <button type="button" data-filter="all">全部</button>
+          <button type="button" data-filter="deleted">回收桶</button>
+        </nav>
+
+        <p id="moderationMessage" class="message" role="status"></p>
+        <div id="opinionsList"></div>
+      </section>
+
+      <section id="commentsView" hidden>
+        <header class="comments-header">
+          <div>
+            <h2>尚未查看的留言</h2>
+            <p>顯示所有尚未查看的留言，最新的在最上方。標記「已查看」後會從這裡消失，但不會從網站刪除。</p>
+          </div>
+          <button type="button" id="refreshCommentsButton" class="secondary-button">重新整理</button>
+        </header>
+        <p id="commentsMessage" class="message" role="status"></p>
+        <div id="commentsList"></div>
+      </section>
     </section>
   </main>
 

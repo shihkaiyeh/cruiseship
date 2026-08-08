@@ -13,11 +13,29 @@ Co zostało dodane:
 3. W „我的帳號” na dole ustawień jest opcja „刪除帳號”.
    Użytkownik wpisuje obecne hasło i potwierdza usunięcie.
 
-4. Usunięcie jest trwałe: kasuje konto i wszystkie opinie tego konta.
+4. Usunięcie jest trwałe: kasuje konto, wszystkie opinie i komentarze
+   tego konta.
 
 5. Na stronie głównej, w prawym górnym rogu zdjęcia, jest mały przycisk:
    - „登入／註冊”, gdy użytkownik nie jest zalogowany,
    - „我的帳號”, gdy użytkownik jest zalogowany.
+
+6. Komentarze pod opiniami:
+   - czytać może każdy;
+   - dodawać mogą tylko zalogowani użytkownicy;
+   - autor może edytować i usuwać własny komentarz;
+   - po edycji komentarz otrzymuje oznaczenie „已編輯”;
+   - administrator może usunąć dowolny komentarz.
+
+7. W panelu administratora znajduje się sekcja „留言”:
+   - licznik informuje o nowych komentarzach;
+   - lista pokazuje wszystkie nieprzejrzane komentarze bez limitu czasu;
+   - najnowsze są zawsze na górze;
+   - przycisk „已查看” oznacza komentarz jako przejrzany i usuwa go
+     wyłącznie z listy w panelu;
+   - przejrzane komentarze pozostają pod opiniami; można je
+     usunąć tylko bezpośrednio na stronie publicznej po zalogowaniu do
+     panelu admina.
 
 
 CO MASZ ZROBIĆ

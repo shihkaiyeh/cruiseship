@@ -459,6 +459,95 @@ app.get('/api/admin/opinions', requireAdmin, async (req, res) => {
   }
 });
 
+// LICZNIK NOWYCH KOMENTARZY W PANELU ADMINISTRATORA.
+app.get('/api/admin/comments/unread-count', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT COUNT(*)::INTEGER AS count
+      FROM comments
+      WHERE admin_seen_at IS NULL
+    `);
+
+    return res.json({ count: Number(result.rows[0]?.count) || 0 });
+  } catch (error) {
+    console.error('Unable to count unread comments:', error);
+    return res.status(500).json({ error: '暫時無法取得新留言數量，請稍後再試。' });
+  }
+});
+
+// WSZYSTKIE KOMENTARZE W JEDNYM MIEJSCU — najnowsze na górze.
+app.get('/api/admin/comments', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        comments.id,
+        comments.opinion_id,
+        comments.comment_text AS text,
+        COALESCE(user_profiles.display_name, '郵輪旅人') AS author,
+        comments.created_at,
+        comments.edited_at,
+        comments.admin_seen_at IS NULL AS is_new,
+        opinions.title AS opinion_title,
+        opinions.line,
+        opinions.ship,
+        opinions.status AS opinion_status,
+        opinions.deleted_at AS opinion_deleted_at
+      FROM comments
+      INNER JOIN opinions
+        ON opinions.id = comments.opinion_id
+      LEFT JOIN user_profiles
+        ON user_profiles.user_id = comments.user_id
+      WHERE comments.admin_seen_at IS NULL
+      ORDER BY comments.created_at DESC, comments.id DESC
+    `);
+
+    return res.json(result.rows.map(row => ({
+      id: row.id,
+      opinionId: row.opinion_id,
+      text: row.text,
+      author: row.author,
+      createdAt: row.created_at,
+      editedAt: row.edited_at,
+      isNew: Boolean(row.is_new),
+      opinionTitle: row.opinion_title,
+      line: row.line,
+      ship: row.ship,
+      opinionIsPublic: row.opinion_status === 'approved' && !row.opinion_deleted_at
+    })));
+  } catch (error) {
+    console.error('Unable to load admin comments:', error);
+    return res.status(500).json({ error: '暫時無法取得留言，請稍後再試。' });
+  }
+});
+
+// OZNACZENIE WYŚWIETLONYCH KOMENTARZY JAKO PRZECZYTANE.
+app.patch('/api/admin/comments/seen', requireAdmin, async (req, res) => {
+  const ids = Array.isArray(req.body?.ids)
+    ? [...new Set(req.body.ids.map(Number).filter(Number.isInteger))]
+    : [];
+
+  if (ids.length === 0 || ids.length > 500 || ids.some(id => id <= 0)) {
+    return res.status(400).json({ error: '留言資料不正確。' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        UPDATE comments
+        SET admin_seen_at = NOW()
+        WHERE id = ANY($1::BIGINT[])
+          AND admin_seen_at IS NULL
+      `,
+      [ids]
+    );
+
+    return res.json({ status: 'ok', updated: result.rowCount });
+  } catch (error) {
+    console.error('Unable to mark comments as seen:', error);
+    return res.status(500).json({ error: '暫時無法更新留言狀態，請稍後再試。' });
+  }
+});
+
 app.patch('/api/admin/opinions/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const allowedStatuses = ['pending', 'approved', 'rejected'];
@@ -667,7 +756,8 @@ app.get('/api/opinions/:id/comments', optionalUser, async (req, res) => {
           comments.user_id,
           COALESCE(user_profiles.display_name, '郵輪旅人') AS author,
           COALESCE(author_stats.approved_review_count, 0) AS approved_review_count,
-          comments.created_at
+          comments.created_at,
+          comments.edited_at
         FROM comments
         INNER JOIN opinions
           ON opinions.id = comments.opinion_id
@@ -699,6 +789,8 @@ app.get('/api/opinions/:id/comments', optionalUser, async (req, res) => {
         approvedReviewCount,
         badge: reviewBadgeForCount(approvedReviewCount),
         createdAt: row.created_at,
+        editedAt: row.edited_at,
+        canEdit: Boolean(req.auth?.userId === row.user_id),
         canDelete: Boolean(isAdmin || req.auth?.userId === row.user_id)
       };
     }));
@@ -758,6 +850,53 @@ app.post('/api/opinions/:id/comments', requireUser, async (req, res) => {
   } catch (error) {
     console.error('Unable to save comment:', error);
     return res.status(500).json({ error: '暫時無法發布留言，請稍後再試。' });
+  }
+});
+
+// EDYCJA KOMENTARZA — wyłącznie autor może zmienić treść własnego wpisu.
+app.patch('/api/comments/:id', requireUser, async (req, res) => {
+  const commentId = Number(req.params.id);
+  const text = cleanText(req.body?.text, 1000);
+
+  if (!Number.isInteger(commentId) || commentId <= 0) {
+    return res.status(400).json({ error: '留言識別碼不正確。' });
+  }
+
+  if (!text) {
+    return res.status(400).json({ error: '請輸入留言內容。' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        UPDATE comments
+        SET comment_text = $1,
+            edited_at = NOW(),
+            admin_seen_at = NULL
+        FROM opinions
+        WHERE comments.id = $2
+          AND comments.user_id = $3
+          AND opinions.id = comments.opinion_id
+          AND opinions.status = 'approved'
+          AND opinions.deleted_at IS NULL
+        RETURNING comments.id, comments.opinion_id, comments.edited_at
+      `,
+      [text, commentId, req.auth.userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: '找不到這則留言，或你沒有編輯權限。' });
+    }
+
+    return res.json({
+      status: 'ok',
+      id: result.rows[0].id,
+      opinionId: result.rows[0].opinion_id,
+      editedAt: result.rows[0].edited_at
+    });
+  } catch (error) {
+    console.error('Unable to update comment:', error);
+    return res.status(500).json({ error: '暫時無法更新留言，請稍後再試。' });
   }
 });
 
@@ -1329,8 +1468,18 @@ async function startServer() {
         comment_text TEXT NOT NULL CHECK (
           CHAR_LENGTH(comment_text) BETWEEN 1 AND 1000
         ),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        edited_at TIMESTAMPTZ,
+        admin_seen_at TIMESTAMPTZ
       )
+    `);
+    await pool.query(`
+      ALTER TABLE comments
+      ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ
+    `);
+    await pool.query(`
+      ALTER TABLE comments
+      ADD COLUMN IF NOT EXISTS admin_seen_at TIMESTAMPTZ
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS comments_opinion_id_index
@@ -1339,6 +1488,15 @@ async function startServer() {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS comments_user_id_index
       ON comments (user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS comments_created_at_index
+      ON comments (created_at DESC, id DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS comments_admin_unread_index
+      ON comments (created_at DESC)
+      WHERE admin_seen_at IS NULL
     `);
 
     app.listen(PORT, '0.0.0.0', () => {

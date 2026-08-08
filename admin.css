@@ -140,6 +140,7 @@ h2 {
 }
 
 #loginForm button,
+.admin-sections button,
 .filters button,
 .actions button,
 .secondary-button {
@@ -170,10 +171,48 @@ h2 {
 }
 
 .secondary-button,
+.admin-sections button,
 .filters button {
   border-color: var(--line);
   background: #f3f5f5;
   color: var(--navy-800);
+}
+
+.admin-sections {
+  display: flex;
+  gap: 9px;
+  margin: 26px 0 8px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-sections button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-sections button.active {
+  border-color: var(--navy-900);
+  background: var(--navy-900);
+  color: #fff;
+}
+
+.new-comments-badge {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 2px 6px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--navy-950);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.new-comments-badge[hidden] {
+  display: none;
 }
 
 .filters {
@@ -311,6 +350,29 @@ h2 {
   color: #fff;
 }
 
+.seen-button {
+  background: var(--ocean);
+  color: #fff;
+}
+
+.view-comment-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 17px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f3f5f5;
+  color: var(--navy-800);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.view-comment-link:hover {
+  border-color: var(--ocean);
+}
+
 .deleted-note {
   margin: 18px 0 0;
   padding: 11px 14px;
@@ -328,6 +390,102 @@ h2 {
   text-align: center;
 }
 
+.comments-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 26px 0 4px;
+}
+
+.comments-header h2 {
+  margin: 0 0 7px;
+  color: var(--navy-950);
+  font-size: 25px;
+}
+
+.comments-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.comment-card {
+  position: relative;
+  margin-top: 17px;
+  overflow: hidden;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 3px 15px 15px 3px;
+  background: #fff;
+  box-shadow: 0 7px 22px rgba(8, 27, 43, 0.06);
+}
+
+.comment-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--ocean);
+  content: "";
+}
+
+.comment-card.is-new::before {
+  background: var(--gold);
+}
+
+.comment-heading,
+.comment-heading-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comment-heading {
+  justify-content: space-between;
+}
+
+.comment-author {
+  color: var(--navy-950);
+  font-size: 16px;
+}
+
+.comment-new-label {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff2cf;
+  color: #845d12;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.comment-date,
+.comment-context,
+.comment-edited {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.comment-context {
+  margin: 10px 0 0;
+}
+
+.comment-context a {
+  color: var(--ocean);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+.comment-text {
+  margin: 15px 0 0;
+  color: var(--ink);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.comment-edited {
+  margin: 7px 0 0;
+}
+
 @media (max-width: 640px) {
   .admin-topbar span:last-child {
     display: none;
@@ -339,16 +497,23 @@ h2 {
   }
 
   .admin-header,
+  .comments-header,
+  .comment-heading,
   .opinion-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .comment-heading-meta {
+    flex-wrap: wrap;
   }
 
   .ratings {
     grid-template-columns: 1fr;
   }
 
-  .actions button {
+  .actions button,
+  .actions .view-comment-link {
     flex: 1;
   }
 }

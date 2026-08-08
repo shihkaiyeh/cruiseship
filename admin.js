@@ -6,9 +6,18 @@ const moderationMessage = document.getElementById('moderationMessage');
 const opinionsList = document.getElementById('opinionsList');
 const logoutButton = document.getElementById('logoutButton');
 const filterButtons = document.querySelectorAll('[data-filter]');
+const adminViewButtons = document.querySelectorAll('[data-admin-view]');
+const opinionsView = document.getElementById('opinionsView');
+const commentsView = document.getElementById('commentsView');
+const commentsList = document.getElementById('commentsList');
+const commentsMessage = document.getElementById('commentsMessage');
+const newCommentsBadge = document.getElementById('newCommentsBadge');
+const refreshCommentsButton = document.getElementById('refreshCommentsButton');
 
 let opinions = [];
+let comments = [];
 let currentFilter = 'pending';
+let currentAdminView = 'opinions';
 
 const statusLabels = {
   pending: '待審核',
@@ -27,6 +36,22 @@ function textElement(tagName, className, text) {
 function ratingText(label, value) {
   const rating = Number(value);
   return `${label}: ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`;
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
 }
 
 async function apiRequest(url, options = {}) {
@@ -174,6 +199,149 @@ function renderOpinions() {
   });
 }
 
+function renderComments() {
+  commentsList.replaceChildren();
+
+  if (comments.length === 0) {
+    commentsList.appendChild(
+      textElement('p', 'empty-state', '目前還沒有留言。')
+    );
+    return;
+  }
+
+  comments.forEach(comment => {
+    const card = document.createElement('article');
+    card.className = `comment-card${comment.isNew ? ' is-new' : ''}`;
+
+    const heading = document.createElement('div');
+    heading.className = 'comment-heading';
+    heading.appendChild(textElement('strong', 'comment-author', comment.author || '郵輪旅人'));
+
+    const headingMeta = document.createElement('div');
+    headingMeta.className = 'comment-heading-meta';
+    if (comment.isNew) {
+      headingMeta.appendChild(textElement('span', 'comment-new-label', '待查看'));
+    }
+    headingMeta.appendChild(
+      textElement('time', 'comment-date', formatDateTime(comment.createdAt))
+    );
+    heading.appendChild(headingMeta);
+    card.appendChild(heading);
+
+    const context = document.createElement('p');
+    context.className = 'comment-context';
+    context.appendChild(document.createTextNode('留言於「'));
+
+    if (comment.opinionIsPublic) {
+      const opinionLink = document.createElement('a');
+      opinionLink.href = `/#review-${comment.opinionId}-comments`;
+      opinionLink.target = '_blank';
+      opinionLink.rel = 'noopener';
+      opinionLink.textContent = comment.opinionTitle || '評價';
+      context.appendChild(opinionLink);
+    } else {
+      context.appendChild(document.createTextNode(comment.opinionTitle || '評價'));
+    }
+
+    context.appendChild(
+      document.createTextNode(`」 · ${comment.line || ''} · ${comment.ship || ''}`)
+    );
+    card.appendChild(context);
+
+    const body = textElement('p', 'comment-text', comment.text || '');
+    card.appendChild(body);
+
+    if (comment.editedAt) {
+      card.appendChild(
+        textElement(
+          'p',
+          'comment-edited',
+          `已編輯 · ${formatDateTime(comment.editedAt)}`
+        )
+      );
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    if (comment.opinionIsPublic) {
+      const viewLink = document.createElement('a');
+      viewLink.className = 'view-comment-link';
+      viewLink.href = `/#review-${comment.opinionId}-comments`;
+      viewLink.target = '_blank';
+      viewLink.rel = 'noopener';
+      viewLink.textContent = '在網站查看';
+      actions.appendChild(viewLink);
+    }
+
+    actions.appendChild(
+      createActionButton(
+        '已查看',
+        'seen-button',
+        () => markCommentSeen(comment.id)
+      )
+    );
+    card.appendChild(actions);
+    commentsList.appendChild(card);
+  });
+}
+
+function updateNewCommentsBadge(count) {
+  const safeCount = Math.max(0, Number(count) || 0);
+  newCommentsBadge.textContent = safeCount > 99 ? '99+' : String(safeCount);
+  newCommentsBadge.hidden = safeCount === 0;
+  newCommentsBadge.parentElement.setAttribute(
+    'aria-label',
+    safeCount > 0 ? `留言，${safeCount} 則新留言` : '留言'
+  );
+}
+
+async function loadNewCommentCount() {
+  try {
+    const data = await apiRequest('/api/admin/comments/unread-count');
+    updateNewCommentsBadge(data.count);
+  } catch (error) {
+    if (error.status === 401) {
+      loginView.hidden = false;
+      moderationView.hidden = true;
+    }
+  }
+}
+
+async function loadComments() {
+  commentsMessage.textContent = '正在載入留言…';
+
+  try {
+    comments = await apiRequest('/api/admin/comments');
+    renderComments();
+    commentsMessage.textContent = '';
+    await loadNewCommentCount();
+  } catch (error) {
+    if (error.status === 401) {
+      loginView.hidden = false;
+      moderationView.hidden = true;
+      return;
+    }
+
+    commentsMessage.textContent = error.message;
+  }
+}
+
+async function markCommentSeen(id) {
+  commentsMessage.textContent = '更新中…';
+
+  try {
+    await apiRequest('/api/admin/comments/seen', {
+      method: 'PATCH',
+      body: JSON.stringify({ ids: [id] })
+    });
+    await loadComments();
+    commentsMessage.textContent = '已標記為已查看；留言仍保留在網站上。';
+  } catch (error) {
+    commentsMessage.textContent = error.message;
+  }
+}
+
 async function loadOpinions() {
   try {
     opinions = await apiRequest('/api/admin/opinions');
@@ -181,6 +349,7 @@ async function loadOpinions() {
     moderationView.hidden = false;
     moderationMessage.textContent = '';
     renderOpinions();
+    await loadNewCommentCount();
   } catch (error) {
     if (error.status === 401) {
       loginView.hidden = false;
@@ -278,9 +447,30 @@ loginForm.addEventListener('submit', async event => {
 logoutButton.addEventListener('click', async () => {
   await apiRequest('/api/admin/logout', { method: 'POST' });
   opinions = [];
+  comments = [];
+  updateNewCommentsBadge(0);
   moderationView.hidden = true;
   loginView.hidden = false;
 });
+
+adminViewButtons.forEach(button => {
+  button.addEventListener('click', async () => {
+    currentAdminView = button.dataset.adminView;
+    const showComments = currentAdminView === 'comments';
+
+    adminViewButtons.forEach(viewButton => {
+      viewButton.classList.toggle('active', viewButton === button);
+    });
+    opinionsView.hidden = showComments;
+    commentsView.hidden = !showComments;
+
+    if (showComments) {
+      await loadComments();
+    }
+  });
+});
+
+refreshCommentsButton.addEventListener('click', loadComments);
 
 filterButtons.forEach(button => {
   button.addEventListener('click', () => {

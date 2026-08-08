@@ -165,14 +165,110 @@ function createCommentsSection(opinion) {
           identity.appendChild(badge);
         }
 
-        header.append(
-          identity,
+        const meta = document.createElement('div');
+        meta.className = 'review-comment-meta';
+        meta.appendChild(
           createTextElement('time', 'review-comment-date', formatCommentDate(comment.createdAt))
         );
-        item.append(
-          header,
-          createTextElement('p', 'review-comment-text', comment.text || '')
+
+        if (comment.editedAt) {
+          meta.appendChild(createTextElement('span', 'review-comment-edited', '已編輯'));
+        }
+
+        const textElement = createTextElement(
+          'p',
+          'review-comment-text',
+          comment.text || ''
         );
+        const actions = document.createElement('div');
+        actions.className = 'review-comment-actions';
+
+        header.append(identity, meta);
+        item.append(header, textElement);
+
+        if (comment.canEdit) {
+          const editButton = document.createElement('button');
+          editButton.type = 'button';
+          editButton.className = 'review-comment-edit';
+          editButton.textContent = '編輯';
+
+          editButton.addEventListener('click', () => {
+            setMessage('');
+            textElement.hidden = true;
+            actions.hidden = true;
+
+            const editForm = document.createElement('form');
+            editForm.className = 'review-comment-edit-form';
+
+            const textarea = document.createElement('textarea');
+            textarea.maxLength = 1000;
+            textarea.required = true;
+            textarea.value = comment.text || '';
+            textarea.setAttribute('aria-label', '編輯留言');
+
+            const editActions = document.createElement('div');
+            editActions.className = 'review-comment-edit-actions';
+
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.className = 'review-comment-edit-cancel';
+            cancelButton.textContent = '取消';
+
+            const saveButton = document.createElement('button');
+            saveButton.type = 'submit';
+            saveButton.className = 'review-comment-edit-save';
+            saveButton.textContent = '儲存';
+
+            const closeEditor = () => {
+              editForm.remove();
+              textElement.hidden = false;
+              actions.hidden = false;
+            };
+
+            cancelButton.addEventListener('click', closeEditor);
+
+            editForm.addEventListener('submit', async event => {
+              event.preventDefault();
+              const text = textarea.value.trim();
+
+              if (!text) {
+                setMessage('請輸入留言內容。', 'error');
+                textarea.focus();
+                return;
+              }
+
+              textarea.disabled = true;
+              cancelButton.disabled = true;
+              saveButton.disabled = true;
+              saveButton.textContent = '儲存中…';
+              setMessage('儲存中…');
+
+              try {
+                await commentApiRequest(`/api/comments/${comment.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text })
+                });
+                await loadComments(true);
+                setMessage('留言已更新。', 'success');
+              } catch (error) {
+                textarea.disabled = false;
+                cancelButton.disabled = false;
+                saveButton.disabled = false;
+                saveButton.textContent = '儲存';
+                setMessage(error.message, 'error');
+              }
+            });
+
+            editActions.append(cancelButton, saveButton);
+            editForm.append(textarea, editActions);
+            item.insertBefore(editForm, actions);
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          });
+
+          actions.appendChild(editButton);
+        }
 
         if (comment.canDelete) {
           const deleteButton = document.createElement('button');
@@ -198,7 +294,11 @@ function createCommentsSection(opinion) {
             }
           });
 
-          item.appendChild(deleteButton);
+          actions.appendChild(deleteButton);
+        }
+
+        if (actions.childElementCount > 0) {
+          item.appendChild(actions);
         }
 
         list.appendChild(item);
